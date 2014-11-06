@@ -1,6 +1,6 @@
 <!---
-sebtools build 010
-Steve Bryant 2004-09-22
+1.0 RC2 (Build 111)
+Last Updated: 2008-09-04
 --->
 <cfscript>
 sebtools = StructNew();
@@ -11,15 +11,8 @@ sebtools.skins.carpediem.format = "semantic";
 sebtools.skins.carpediem.shape = "bar";
 sebtools.skins.carpediem.menutype = "drop-down";
 
-sebtools.skins.cfadmin = StructNew();
-sebtools.skins.cfadmin.format = "table";
-sebtools.skins.cfadmin.shape = "bar";
-sebtools.skins.cfadmin.menutype = "bar";
-
-sebtools.skins.cfhelp = StructNew();
-sebtools.skins.cfhelp.format = "table";
-sebtools.skins.cfhelp.shape = "bar";
-sebtools.skins.cfhelp.menutype = "bar";
+sebtools.skins.deepblue = StructNew();
+sebtools.skins.deepblue.format = "table";
 
 sebtools.skins.graybar = StructNew();
 sebtools.skins.graybar.format = "semantic";
@@ -65,5 +58,4 @@ sebtools.skins.tim = StructNew();
 sebtools.skins.tim.format = "table";
 sebtools.skins.tim.shape = "round";
 sebtools.skins.tim.menutype = "roundtab";
-
 </cfscript>

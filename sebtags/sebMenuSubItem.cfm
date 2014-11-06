@@ -1,4 +1,12 @@
-<cfsilent>
+<!---
+1.0 RC2 (Build 111)
+Last Updated: 2008-09-04
+Created by Steve Bryant 2004-06-01
+Tim Jackson provided the original tags as well as the inpiration and brilliant implementation of consistency for admin sections.
+Information: sebtools.com
+Documentation:
+http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
+---><cfsilent>
 <cfif isDefined("ThisTag.ExecutionMode") AND ( (Not ThisTag.HasEndTag) OR ThisTag.ExecutionMode eq "End" )>
 	<cfset TagName = "cf_sebMenuSubItem"><cfset ParentTag = "cf_sebMenuItem">
 	<cfparam name="attributes.Label" default="Admin">
@@ -9,6 +17,16 @@
 		<cfassociate basetag="#ParentTag#" datacollection="items">
 	<cfelse>
 		<cfthrow message="&lt;#TagName#&gt; must be called as a custom tag between &lt;#ParentTag#&gt; and &lt;/#ParentTag#&gt;" type="cftag">
+	</cfif>
+	<cfif Right(attributes.link,1) EQ "/">
+		<cfset attributes.folder = attributes.link>
+	<cfelseif ListLen(attributes.link,"/") GT 1>
+		<cfset attributes.folder = ListDeleteAt(attributes.link,ListLen(attributes.link,"/"),"/")>
+		<cfif Right(attributes.folder,1) NEQ "/">
+			<cfset attributes.folder = "#attributes.folder#/">
+		</cfif>
+	<cfelse>
+		<cfset attributes.folder = "">
 	</cfif>
 </cfif>
 </cfsilent>

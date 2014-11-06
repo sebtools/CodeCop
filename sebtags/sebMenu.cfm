@@ -1,9 +1,13 @@
-<cfsilent>
-<cfset TagName = "cf_sebMenu">
 <!---
-Code by Steve Bryant
+1.0 RC2 (Build 111)
+Last Updated: 2008-09-04
+Created by Steve Bryant 2004-06-01
 Tim Jackson provided the original tags as well as the inpiration and brilliant implementation of consistency for admin sections.
---->
+Information: sebtools.com
+Documentation:
+http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
+---><cfsilent>
+<cfset TagName = "cf_sebMenu">
 <cfscript>
 //Default attributes from request.cftags.sebtags structure
 if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "sebtags") ) {
@@ -16,20 +20,21 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagN
 </cfscript>
 <cfparam name="attributes.action" default="StartPage"><!--- options: StartPage,EndPage --->
 <cfparam name="attributes.menutype" default=""><!--- options: bar,drop-down,roundtab,squaretab --->
-<cfparam name="attributes.width" default="770" type="numeric">
+<cfparam name="attributes.width" default="770" type="string">
 <cfparam name="attributes.Label" default="Admin Menu:">
 <cfparam name="attributes.HasLeftPanel" default="true" type="boolean">
 <cfparam name="attributes.LeftLabelWidth" default="135" type="numeric">
 <cfparam name="attributes.MainLink" default="">
 <cfparam name="attributes.skin" default="">
-<cfparam name="attributes.librarypath" default="lib/">
+<cfparam name="attributes.librarypath" default="/lib/">
+<cfparam name="attributes.skinpath" default="#attributes.librarypath#skins/">
+<cfparam name="attributes.adminpath" default="/admin/">
 <cfparam name="attributes.imagepath" default="#attributes.librarypath#">
+<cfparam name="attributes.submenubackground" default="##EFEFEF">
+<cfparam name="attributes.useQueryString" default="false">
 
 <cfparam name="attributes.MainLinkLabel" default="">
 <cfparam name="attributes.LogoutLink" default="/logout.cfm">
-
-<!--- %% !! TEMPORARY !! --->
-<!--- <cfparam name="attributes.shape" default="bar"> --->
 
 <cfparam name="attributes.align" default=""><!--- not required --->
 <cfparam name="attributes.TextRight" default="">
@@ -40,9 +45,20 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagN
 
 </cfsilent>
 <cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode eq "End"><cfsilent>
-<cfif Not isDefined("ThisTag.items") OR ArrayLen(ThisTag.items) eq 0><cfthrow message="&lt;#TagName#&gt; must include at least one &lt;cf_Tab&gt;" type="cftag"></cfif>
-
+<cfif NOT ( isDefined("ThisTag.items") AND isArray(ThisTag.items) AND ArrayLen(ThisTag.items) )>
+	<cfset ThisTag.items = ArrayNew(1)>
+	<!--- <cfthrow message="&lt;#TagName#&gt; must include at least one &lt;cf_Tab&gt;" type="cftag"> --->
+</cfif>
+<cfif isDefined("attributes.data") AND isArray(attributes.data)>
+	<cfloop index="ii" from="1" to="#ArrayLen(attributes.data)#">
+		<cfset ArrayAppend(ThisTag.items,attributes.data[ii])>
+	</cfloop>
+</cfif>
 <cfscript>
+//Use skins attribute for skins definitions
+if ( StructKeyExists(attributes,"skins") AND isStruct(attributes.skins) ) {
+	StructAppend(sebtools.skins,attributes.skins,true);
+}
 //Set menu-type based on skins/browser/defaults
 if (attributes.menutype eq "drop-down") {
 	isSFBrowser = false;
@@ -57,7 +73,7 @@ if (attributes.menutype eq "drop-down") {
 	}
 }
 if ( NOT Len(attributes.menutype) ) {
-	if ( StructKeyExists(sebtools.skins, attributes.skin) ) {
+	if ( StructKeyExists(sebtools.skins, attributes.skin) AND StructKeyExists(sebtools.skins[attributes.skin],"menutype") ) {
 		attributes.menutype = sebtools.skins[attributes.skin].menutype;
 	} else {
 		attributes.menutype = "round";
@@ -66,6 +82,9 @@ if ( NOT Len(attributes.menutype) ) {
 
 //Get the current file
 CurrPage = CGI.SCRIPT_NAME;
+if ( attributes.useQueryString AND Len(CGI.QUERY_STRING) ) {
+	CurrPage = CurrPage & '?' & CGI.QUERY_STRING;//dre 2006-11-09 in case menu points to a file with a ?.... string
+}
 CurrFile = ListLast(CurrPage,"/");
 CurrPath = ReplaceNoCase(CurrPage,CurrFile,"");
 CurrTab = 0;
@@ -107,7 +126,7 @@ if ( NOT CurrTab ) {
 		//Look for page in sub-items
 		if ( StructKeyExists(ThisTag.tabs[i],"items") AND ArrayLen(ThisTag.tabs[i].items) ) {
 			//  Look in each sub-item
-			for ( j=i; j lte ArrayLen(ThisTag.tabs[i].items); j=j+1 ) {
+			for ( j=1; j lte ArrayLen(ThisTag.tabs[i].items); j=j+1 ) {
 				if ( CurrPage eq ThisTag.tabs[i].items[j].Link ) {
 					CurrTab = i;
 					break;
@@ -128,8 +147,53 @@ if ( NOT CurrTab ) {
 	}
 	// /Look in each tab
 }
+
 //If we *still* don't know what tab to use, check by directory
-tCurrPath = CurrPath;
+if ( NOT CurrTab ) {
+	tCurrPath = CurrPath;
+	//  March down current folder
+	while ( ListLen(tCurrPath) ) {
+		//  Look in each tab
+		for (i=1; i lte ArrayLen(ThisTag.tabs); i=i+1) {
+			if ( tCurrPath eq ThisTag.tabs[i].folder ) {
+				CurrTab = i;
+				break;
+			}
+			
+			
+			if ( NOT CurrTab ) {
+				for ( j=1; j lte ArrayLen(ThisTag.tabs[i].items); j=j+1 ) {
+					if ( tCurrPath eq ThisTag.tabs[i].items[j].folder ) {
+						CurrTab = i;
+						break;
+					}
+				}
+			}
+			
+			if ( CurrTab ) {
+				break;
+			}
+			
+		}
+		// /Look in each tab
+		
+		if ( CurrTab ) {
+			break;
+		} else {
+			if ( ListLen(tCurrPath,"/") ) {
+				tCurrPath = ListDeleteAt(tCurrPath,ListLen(tCurrPath,"/"),"/");
+				if ( Len(tCurrPath) AND Right(tCurrPath,1) neq "/" ) {
+					tCurrPath = "#tCurrPath#/";
+				}
+			} else {
+				break;
+			}
+		}
+		
+	}
+	// /March down current folder
+}
+/*
 if ( NOT CurrTab ) {
 	for ( j=ListLen(CurrPath,"/"); j gte 1; j=j-1 ) {
 		for (i=1; i lte ArrayLen(ThisTag.tabs); i=i+1) {
@@ -151,17 +215,38 @@ if ( NOT CurrTab ) {
 				break;
 			}
 		}
+		
+		if ( NOT CurrTab ) {
+			//Look for page in sub-items
+			if ( StructKeyExists(ThisTag.tabs[i],"items") AND ArrayLen(ThisTag.tabs[i].items) ) {
+				//  Look in each sub-item
+				for ( j=1; j lte ArrayLen(ThisTag.tabs[i].items); j=j+1 ) {
+					if ( CurrPage eq ThisTag.tabs[i].items[j].Link ) {
+						CurrTab = i;
+						break;
+					}
+					if ( Len(ThisTag.tabs[i].items[j].pages) ) {
+						if ( ListFindNoCase(ThisTag.tabs[i].items[j].pages, CurrPage) ) {
+							CurrTab = i;
+							break;
+						}
+					}
+				}
+				// /Look in each sub-item
+			}
+		}
+		
 	}
 }
-
+*/
 //Set widths based on menu type
 if ( attributes.menutype eq "squaretab" ) {
 	LeftSideWidth = attributes.LeftLabelWidth;
 } else {
 	LeftSideWidth = attributes.LeftLabelWidth;// + 9
 }
-LeftHRWidth = LeftSideWidth - 5;
-RightSideWidth = attributes.Width - LeftSideWidth;
+//LeftHRWidth = LeftSideWidth - 5;
+//RightSideWidth = attributes.Width - LeftSideWidth - 16;
 
 //Base ItemScope (for site menu items) on whether currTab is indicated
 if ( CurrTab ) {
@@ -171,54 +256,61 @@ if ( CurrTab ) {
 }
 </cfscript>
 
-</cfsilent><!--- START OUTPUT ---><cfoutput><!-- CurrTab:#CurrTab# -->
-<cfif attributes.menutype eq "drop-down"><cfsavecontent variable="head1"><script language="JavaScript" src="#attributes.librarypath#nav.js" type="text/javascript"></script><style type="text/css">@import url(#attributes.librarypath#nav.css);</style></cfsavecontent><cfhtmlhead text="#head1#"></cfif>
-<cfif Len(attributes.skin)><cfsavecontent variable="styletag"><style type="text/css">@import url(#attributes.librarypath#skins/#attributes.skin#.css);</style></cfsavecontent><cfhtmlhead text="#styletag#"></cfif>
-<cfif attributes.menutype eq "drop-down">
-<!--- Drop-Down --->
-<div id="sebTab">
+</cfsilent><!--- START OUTPUT ---><cfoutput><!-- CurrTab:#CurrTab# --><cfif attributes.menutype eq "drop-down"><cfsavecontent variable="head1"><script language="JavaScript" src="#attributes.librarypath#nav.js" type="text/javascript"></script><style type="text/css">@import url(#attributes.librarypath#nav.css);</style></cfsavecontent><cfhtmlhead text="#head1#"></cfif><cfif Len(attributes.skin)><cfsavecontent variable="styletag"><style type="text/css">@import url(#attributes.skinpath##attributes.skin#.css);</style></cfsavecontent><cfhtmlhead text="#styletag#"></cfif><cfsavecontent variable="styletag"><style type="text/css">##sebMenuMain {width:#attributes.width#px;border:1px solid ##BDBDBD;}</style></cfsavecontent><cfhtmlhead text="#styletag#">
+<div<cfif Len(Trim(attributes.skin))> class="sebMenu-skin-#LCase(attributes.skin)#"</cfif>><cfif attributes.menutype eq "drop-down">
+<!--- Drop-Down ---><div id="sebTab">
 <div id="nav" style="width:#attributes.width#px;" class="sfMenu">
 	<ul><cfloop index="i" from="1" to="#ArrayLen(ThisTag.tabs)#" step="1"><li><a href="#ThisTag.tabs[i].LinkURL#"<cfif CurrTab eq i> class="CurrTab"</cfif>>#ThisTag.tabs[i].Label#</a><cfif StructKeyExists(ThisTag.tabs[i], "items")><ul><cfloop index="j" from="1" to="#ArrayLen(ThisTag.tabs[i].items)#" step="1"><li><a href="#ThisTag.tabs[i].items[j].Link#">#ThisTag.tabs[i].items[j].Label#</a></cfloop></ul></cfif></li></cfloop></ul>
 </div>
-<br/></div>
-<cfelse>
+<br/></div><cfelseif attributes.menutype EQ "list">
 <div id="sebMenu" style="width:#attributes.width#px;">
 <table width="#attributes.width#"<cfif Len(attributes.align)> align="#attributes.align#"</cfif> border="0" cellspacing="0" cellpadding="0" id="sebTab">
+<tr>
+	<td>
+		<ul><cfloop index="i" from="1" to="#ArrayLen(ThisTag.tabs)#" step="1">
+			<li<cfif CurrTab eq i> class="CurrTab"</cfif>><a href="#ThisTag.tabs[i].LinkURL#">#ThisTag.tabs[i].Label#</a></li></cfloop>
+		</ul>
+	</td>
+</tr>
+<tr>
+	<td valign="top" id="sebMenuBody"><cfelse>
+<div id="sebMenu" style="width:#attributes.width#px;">
+<div id="sebMenu-topbar" align="left">
+<table<!---  width="#attributes.width#" ---><cfif Len(attributes.align)> align="#attributes.align#"</cfif> border="0" cellspacing="0" cellpadding="0" id="sebTab">
 <tr><cfif attributes.HasLeftPanel>
-	<cfif attributes.menutype eq "roundtab"><td width="9"><img src="#attributes.imagepath#tab_round_topleft.gif" width="9" height="22" border="0" alt=""/></td><cfset LeftTabWidth = attributes.LeftLabelWidth - 15>
-	<cfelse><cfset LeftTabWidth = attributes.LeftLabelWidth></cfif>
-	<td align="center" nowrap width="#LeftTabWidth#"><b id="sebMenuLabel">#attributes.Label#</b></td></cfif>
-<cfloop index="i" from="1" to="#ArrayLen(ThisTag.tabs)#" step="1">
-	<cfif attributes.menutype eq "squaretab"><td width="1" style="width:1px;background-color:white;"><div style="width:2px;"></div></td>
-	<cfelseif attributes.menutype eq "roundtab"><td width="17"><img src="#attributes.imagepath#tab_round_separator.gif" width="17" height="22" border="0" alt=""/></td></cfif>
-	<td nowrap class="tab<cfif CurrTab eq i> curr</cfif>"><a href="#ThisTag.tabs[i].LinkURL#"<cfif CurrTab eq i> class="CurrTab"</cfif>>#ThisTag.tabs[i].Label#</a></td>
-</cfloop>
-	<cfif attributes.menutype eq "roundtab"><td width="9"><img src="#attributes.imagepath#tab_round_topright.gif" width="9" height="22" border="0" alt=""/></td></cfif>
-	<td width="100%" class="clear" align="right">#attributes.TextRight#&nbsp;</td>
+	<cfif attributes.menutype eq "roundtab"><td width="9"><img src="#attributes.imagepath#tab_round_topleft.gif" width="9" height="22" border="0" alt=""/></td><cfset LeftTabWidth = attributes.LeftLabelWidth - 26>
+	<cfelse><cfset LeftTabWidth = attributes.LeftLabelWidth></cfif><td id="sebTabMenuTop" align="center" class="tab" nowrap="nowrap" width="#LeftTabWidth#"><b id="sebMenuLabel">#attributes.Label#</b></td></cfif><cfloop index="i" from="1" to="#ArrayLen(ThisTag.tabs)#" step="1"><cfif ThisTag.tabs[i].inTabs><cfif attributes.menutype eq "squaretab">
+	<td width="1" style="width:1px;background-color:white;"><div style="width:2px;"></div></td><cfelseif attributes.menutype eq "roundtab">
+	<td width="17"><img src="#attributes.imagepath#tab_round_separator.gif" width="17" height="22" border="0" alt=""/></td></cfif>
+	<td nowrap="nowrap" class="tab<cfif CurrTab eq i> curr</cfif>"><a href="#ThisTag.tabs[i].LinkURL#"<cfif CurrTab eq i> class="CurrTab"</cfif>>#ThisTag.tabs[i].Label#</a></td></cfif></cfloop><cfif attributes.menutype eq "roundtab">
+	<td width="9"><img src="#attributes.imagepath#tab_round_topright.gif" width="9" height="22" border="0" alt=""/></td></cfif>
+	<td<!---  width="100%" ---> class="clear" align="right">#attributes.TextRight#&nbsp;</td>
 </tr>
 </table>
-<table width="#attributes.width#" border="0" cellspacing="0" cellpadding="0" style="width:#attributes.width#px;border:1px solid ##BDBDBD;" id="sebMenuMain">
+</div>
+<table width="#attributes.width#" border="0" cellspacing="0" cellpadding="0" id="sebMenuMain">
 <tr><cfif attributes.HasLeftPanel>
-	<td width="#LeftSideWidth#" bgcolor="##EFEFEF" id="sebTabMenu" valign="top">
-	<cfif Len(attributes.MainLink)><ul><li><a href="#attributes.MainLink#" id="sebMenuMainLink"><cfif Len(attributes.MainLinkLabel)>#attributes.MainLinkLabel#<cfelse>Home</cfif></a></li></ul></cfif>
-	<hr width="#LeftHRWidth#" size="1"/>
-	<cfif CurrTab AND StructKeyExists(ItemScope, "items")>
-	<ul>
-		<cfloop index="j" from="1" to="#ArrayLen(ItemScope.items)#" step="1">
+	<td width="#LeftSideWidth#"<cfif Len(attributes.submenubackground)> bgcolor="#attributes.submenubackground#"</cfif> id="sebTabMenu" valign="top"><cfif Len(attributes.MainLink)>
+		<ul><li><a href="#attributes.MainLink#" id="sebMenuMainLink"><cfif Len(attributes.MainLinkLabel)>#attributes.MainLinkLabel#<cfelse>Home</cfif></a></li></ul></cfif><cfif StructKeyExists(ItemScope, "items") AND ArrayLen(ItemScope.items)>
+	<hr size="1"/>
+	<ul><cfloop index="j" from="1" to="#ArrayLen(ItemScope.items)#" step="1">
 		<li><a href="#ItemScope.items[j].Link#">#ItemScope.items[j].Label#</a></li></cfloop>
 	</ul>
-	</cfif>
-	<hr width="#LeftHRWidth#" size="1"/>
-	<cfif Len(attributes.LogoutLink)><ul><li><a href="#attributes.LogoutLink#" id="sebMenuLogoutLink">Logout</a></li></ul></cfif>
+	<hr size="1" /><cfelse>
+	<br/></cfif>
+	<ul>
+		<li><a href="#attributes.adminpath#">Admin Home</a></li>
+		<li><a href="/" target="_blank">View Site</a></li><cfif Len(attributes.LogoutLink)>
+		<li><a href="#attributes.LogoutLink#" id="sebMenuLogoutLink">Logout</a></li></cfif>
+	</ul>
+	<div><img src="#attributes.librarypath#i.gif" height="1" width="#LeftSideWidth#" alt=""></div>
 	</td></cfif>
-	<td width="#RightSideWidth#" style="padding:8px;" valign="top" id="sebMenuBody">
-</cfif>
-
-</cfoutput><cfset ThisTag.GeneratedContent = "">
+	<td width="100%" valign="top" id="sebMenuBody" style="padding:8px;"></cfif></cfoutput><cfset ThisTag.GeneratedContent = "">
 </cfif>
 <cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode eq "Start" AND ListFindNoCase("end,EndPage", attributes.action)>
 	</td>
 </tr>
 </table>
+</div>
 </div>
 </cfif>

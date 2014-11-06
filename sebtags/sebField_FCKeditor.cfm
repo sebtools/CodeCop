@@ -1,5 +1,7 @@
 <cfparam name="attributes.width" type="string" default="520">
 <cfparam name="attributes.height" type="numeric" default="700">
+<cfparam name="attributes.toolbarset" type="string" default="seb">
+<cfparam name="attributes.EditorAreaCSS" type="string" default="">
 <cfscript>
 if ( NOT Len(attributes.urlpath) ) {
 	attributes.urlpath = "/f/fckeditor/";
@@ -9,7 +11,7 @@ Application.userFilesPath = attributes.urlpath;
 <cfsavecontent variable="input"><cfoutput>
 <!--- <cf_fckeditor instanceName="#myatts.fieldname#" width="520" height="700" value="#myatts.Value#" basePath="#ParentAtts.librarypath#fckeditor/"> --->
 <script type="text/javascript" src="#ParentAtts.librarypath#fckeditor/fckeditor.js"></script>
-<textarea name="#attributes.fieldname#" style="width:attributes.widthpx;height:#attributes.height#px">#attributes.value#</textarea>
+<textarea name="#attributes.fieldname#" style="width:#attributes.width#px;height:#attributes.height#px">#attributes.value#</textarea>
 <cfset UserFilesString = URLEncodedFormat("?UserFiles=#attributes.urlpath#")>
 <cfset ConnectorString = "Connector=connectors/cfm/connector.cfm&ServerPath=#attributes.urlpath#"><!---  & UserFilesString --->
 <cftry>
@@ -28,7 +30,8 @@ function loadFckEditor() {
 	oFCKeditor.Config.LinkUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&editorpath=' + oFCKeditor.BasePath ;
 	oFCKeditor.Config.ImageUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Image&editorpath=' + oFCKeditor.BasePath ;
 	oFCKeditor.Config.FlashUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Flash&editorpath=' + oFCKeditor.BasePath ;
-	//oFCKeditor.ToolbarSet = 'seb';
+	<cfif Len(Trim(attributes.EditorAreaCSS))>oFCKeditor.EditorAreaCSS = '#attributes.EditorAreaCSS#';</cfif>
+	<cfif Len(Trim(attributes.toolbarset))>oFCKeditor.ToolbarSet = '#attributes.toolbarset#';</cfif>
 	oFCKeditor.Width = '#attributes.width#';
 	oFCKeditor.Height = '#attributes.height#';
 	oFCKeditor.ReplaceTextarea();

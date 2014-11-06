@@ -1,10 +1,12 @@
 <!---
-cf_sebSubForm build 008
-Steve Bryant	2004-06-01
+1.0 RC2 (Build 111)
+Last Updated: 2008-09-04
+Created by Steve Bryant 2004-06-01
+Information: sebtools.com
 Documentation:
 http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 ---><cfset TagName = "cf_sebSubForm"><cfset ParentTag = "cf_sebForm">
-<cfif Not isDefined("ThisTag.ExecutionMode") OR Not ListFindNoCase(GetBaseTagList(), ParentTag)><cfthrow message="&lt;#TagName#&gt; must be called as a custom tag between &lt;#ParentTag#&gt; and &lt;/#ParentTag#&gt;" type="cftag"></cfif>
+<cfif NOT isDefined("ThisTag.ExecutionMode") OR NOT ListFindNoCase(GetBaseTagList(), ParentTag)><cfthrow message="&lt;#TagName#&gt; must be called as a custom tag between &lt;#ParentTag#&gt; and &lt;/#ParentTag#&gt;" type="cftag"></cfif>
 
 <cfswitch expression="#ThisTag.ExecutionMode#">
 
@@ -23,11 +25,18 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 	<cfparam name="attributes.cols" default="1" type="numeric">
 	<cfparam name="attributes.useFieldset" default="true" type="boolean">
 	<cfparam name="attributes.prefix" default="subform_#attributes.tablename#_">
-	<cfset ParentAtts = request.cftags[ParentTag].attributes>
-	<cfif Not ( Len(attributes.tablename) OR Len(attributes.query) )>
-		<cfthrow message="&lt;#TagName#&gt;: tablename or query attribute must be provided in order to use &lt;#TagName#&gt;" type="cftag">
+	
+	<cfset ParentData = getBaseTagData("cf_sebForm")>
+	<cfset ParentAtts = ParentData.attributes>
+	
+	<cfif NOT ( Len(attributes.tablename) OR Len(attributes.query) OR ( isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_GetMethod") ) )>
+		<cfthrow message="&lt;#TagName#&gt;: tablename, query attribute, or CFC must be provided in order to use &lt;#TagName#&gt;" type="cftag">
 	</cfif>
-	<cfif Len(attributes.query)>
+	<cfif isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_GetMethod")>
+		<cfinvoke returnvariable="qsubdata" component="#attributes.CFC_Component#" method="#attributes.CFC_GetMethod#">
+			<cfinvokeargument name="#attributes.fkfield#" value="#ParentAtts.recordid#">
+		</cfinvoke>
+	<cfelseif Len(attributes.query)>
 		<cfif StructKeyExists(Caller,attributes.query) AND isQuery(Caller[attributes.query])>
 			<cfset qsubdata = Caller[attributes.query]>
 		<cfelse>
@@ -40,7 +49,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 		<cfif NOT ( Len(attributes.pkfield) AND Len(attributes.fkfield) )>
 			<cfthrow message="&lt;#TagName#&gt;: pkfield and fkfield attributes must be provided when using tablename attribute with &lt;#TagName#&gt; with tablename attribute" type="cftag">
 		</cfif>
-		<cfif Not Len(attributes.pktype)>
+		<cfif NOT Len(attributes.pktype)>
 			<cfset attributes.pktype = ParentAtts.pktype>
 		</cfif>
 		<cftry>
@@ -57,15 +66,15 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 	if ( attributes.maxrows gt 0 ) {
 		attributes.addrows = Min( (attributes.maxrows - qsubdata.RecordCount), attributes.addrows );
 	}
-	if ( Not StructKeyExists(request, "cftags") ) {
+	if ( NOT StructKeyExists(request, "cftags") ) {
 		request.cftags = StructNew();
 	}
-	if ( Not StructKeyExists(request.cftags, TagName) ) {
+	if ( NOT StructKeyExists(request.cftags, TagName) ) {
 		request.cftags[TagName] = StructNew();
 	}
 	request.cftags[TagName].fieldsnum = 0;
 	/*
-	if ( Not StructKeyExists(request.cftags[TagName], "attributes") ) {
+	if ( NOT StructKeyExists(request.cftags[TagName], "attributes") ) {
 		request.cftags[TagName].attributes = StructNew();
 	}
 	request.cftags[TagName].attributes = attributes;
@@ -103,7 +112,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 			ArrayAppend(arrFields, ThisTag.qfields[thisField]);
 			
 			//If this field is not in the database, mark that a SQL DDL statement is needed
-			if ( Not ListFindNoCase(qsubdata.ColumnList, ThisTag.qfields[thisField].dbfield)  ) {
+			if ( NOT ListFindNoCase(qsubdata.ColumnList, ThisTag.qfields[thisField].dbfield)  ) {
 				doSQLDDL = true;
 			}
 			
@@ -159,7 +168,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 		<cfloop index="j" from="1" to="#qsubdata.RecordCount#" step="1">
 			<cfset RecordFields[j] = ArrayNew(1)>
 			<cfif attributes.cols gt 1><td></cfif>
-			<cfif attributes.useFieldset><fieldset></cfif>
+			<cfif attributes.useFieldset>
+				<fieldset>
+			</cfif>
 			<cfif Len(attributes.label)>
 				<cfoutput>
 				<cfif attributes.useFieldset>
@@ -203,7 +214,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 					<cf_sebField attributeCollection="#RecordFields[j][i]#"><cfoutput>#RecordFields[j][i].GeneratedContent#</cfoutput></cf_sebField>
 				</cfif>
 			</cfloop>
-			<cfif attributes.useFieldset></fieldset></cfif>
+			<cfif attributes.useFieldset>
+				</fieldset>
+			</cfif>
 			<cfif attributes.cols gt 1></td><cfif (numFieldsets MOD attributes.cols) eq 0></tr><tr></cfif></cfif>
 		</cfloop>
 		<!--- /Loop through existing records --->

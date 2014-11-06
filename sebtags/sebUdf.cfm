@@ -1,10 +1,47 @@
 <!---
-sebUdf build 008
-Steve Bryant 2004-06-01
+1.0 RC2 (Build 111)
+Last Updated: 2008-09-04
 --->
 <cfscript>
 cr = "
 ";
+//Coop hook
+if ( StructKeyExists(caller,'root') ) {
+	root = caller.root;
+} else {
+	root = caller;
+}
+if ( StructKeyExists(root,"coop") AND isObject(root.coop) AND StructKeyExists(root.coop,"mergeattributes") ) {
+	attributes = root.coop.mergeattributes(attributes,root);
+}
+function fixAbsoluteLinks(string) {
+	var result = arguments.string;
+	var reRoot = "https?://#CGI.HTTP_HOST#(:#CGI.SERVER_PORT#)?/";
+	var sRegexs = StructNew();
+	var findat = 0;
+	var ii = 0;
+	var jj = 0;
+	var atts = "href,src";
+	var att = "";
+	
+	for ( jj=1; jj LTE ListLen(atts); jj=jj+1 ) {
+		att = ListGetAt(atts,jj);
+		sRegexs[att] = "#att#=#chr(34)##reRoot#";
+		
+		findat = REFindNoCase(sRegexs[att], result,1,1);
+		//result = Mid(result,findat.pos[1],findat.len[1]);
+		//result = reHref;
+		
+		while ( findat.pos[1] GT 0 AND ii LTE 10000 ) {
+			//result = result + 1;
+			result = ReplaceNoCase(result,Mid(result,findat.pos[1],findat.len[1]),"#att#=#chr(34)#/","ALL");
+			findat = REFindNoCase(sRegexs[att], result, findat.pos[1]+1,1);
+			ii = ii + 1;
+		}
+	}
+	
+	return result;
+}
 function getLibraryServerPath(librarypath) {
 	var fileObj = createObject("java", "java.io.File");
 	var dirdelim = fileObj.separator;
@@ -108,4 +145,49 @@ function IsValidPhone(valueIn) {
 function IsZipUS(str) {
 	return REFind('^[[:digit:]]{5}(( |-)?[[:digit:]]{4})?$', str); 
 }
+/**
+ * Creates a unique file name; used to prevent overwriting when moving or copying files from one location to another.
+ * v2, bug found with dots in path, bug found by joseph
+ * 
+ * @param fullpath 	 Full path to file. (Required)
+ * @return Returns a string. 
+ * @author Marc Esher (marc.esher@cablespeed.com) 
+ * @version 2, January 22, 2008 
+ */
+function createUniqueFileName(fullPath){
+	var extension = "";
+	var thePath = "";
+	var newPath = arguments.fullPath;
+	var counter = 0;
+	
+	if(listLen(fullPath,".") gte 2) extension = listLast(fullPath,".");
+	thePath = listDeleteAt(fullPath,listLen(fullPath,"."),".");
+
+	while(fileExists(newPath)){
+		counter = counter+1;		
+		newPath = thePath & "_" & counter & "." & extension;			
+	}
+	return newPath;	
+}
+function sebJSStringFormat(str) {
+	return ReReplaceNoCase(str,"'","\'","ALL");
+}
 </cfscript>
+
+<cffunction name="fixFileName" access="private" returntype="string" output="false">
+	<cfargument name="name" type="string" required="yes">
+	<cfargument name="dir" type="string" required="yes">
+	
+	<cfset var dirdelim = CreateObject("java", "java.io.File").separator>
+	<cfset var result = ReReplaceNoCase(arguments.name,"[^a-zA-Z0-9_\-\.]","_","ALL")><!--- Remove special characters from file name --->
+	<cfset var path = "#dir##dirdelim##result#">
+	
+	<!--- If corrected file name doesn't match original, rename it --->
+	<cfif arguments.name NEQ result>
+		<cfset path = createUniqueFileName(path)>
+		<cfset result = ListLast(path,dirdelim)>
+		<cffile action="rename" source="#arguments.dir##dirdelim##arguments.name#" destination="#result#">
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>

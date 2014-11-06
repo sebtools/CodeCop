@@ -1,8 +1,11 @@
-<cfsilent>
 <!---
-Version 0.9.8 Build 94
-Last Updated 2006-09-26
---->
+1.0 RC2 (Build 111)
+Last Updated: 2008-09-04
+Created by Steve Bryant 2004-06-01
+Information: sebtools.com
+Documentation:
+http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
+---><cfsilent>
 <cfset TagName = "cf_sebTable">
 <cfif ThisTag.ExecutionMode eq "Start">
 	<cfscript>
@@ -24,7 +27,7 @@ Last Updated 2006-09-26
 	liHtmlAtts = "id,class,title,style,dir,lang,xml:lang,onclick,ondblclick,onmousedown,onmouseup,onmouseover,onmousemove,onmouseout,onkeypress,onkeydown,onkeyup";
 	liColAtts = liHtmlAtts & ",align,char,charoff,span,valign";
 	
-	function show(showval,rownum) {
+	function doShow(showval,rownum) {
 		var result = true;
 		var fieldname = "";
 		var negate = false;
@@ -39,12 +42,13 @@ Last Updated 2006-09-26
 			}
 			if ( ListFindNoCase(qTableData.ColumnList,fieldname) ) {
 				if ( isBoolean(qTableData[fieldname][rownum]) ) {
-					if ( negate ) {
-						result = NOT qTableData[fieldname][rownum];
-					} else {
-						result = qTableData[fieldname][rownum];
-					}
+					result = qTableData[fieldname][rownum];
+				} else {
+					result = Len(qTableData[fieldname][rownum]);
 				}
+			}
+			if ( negate ) {
+				result = NOT result;
 			}
 		}
 		return result;
@@ -54,7 +58,7 @@ Last Updated 2006-09-26
 	<cfparam name="attributes.query" default="">
 	<cfparam name="attributes.table" default="">
 	<cfparam name="attributes.datasource" default="">
-	<cfparam name="attributes.pkfield">
+	<cfparam name="attributes.pkfield" default="">
 	<cfparam name="attributes.pktype" default="identity"><!--- identity or GUID --->
 	<cfparam name="attributes.label" default="#attributes.table#">
 	<cfparam name="attributes.labelSuffix" default="Manager">
@@ -72,9 +76,11 @@ Last Updated 2006-09-26
 	<!--- <cfparam name="attributes.styleOver" default=""> --->
 	<cfparam name="attributes.orderby" default="">
 	<cfparam name="attributes.filter" default="">
+	<cfparam name="attributes.rowlimit" default="0" type="numeric">
 	<cfparam name="attributes.maxrows" default="0" type="numeric">
 	<cfparam name="attributes.maxpages" default="0" type="numeric">
-	<cfparam name="attributes.librarypath" default="lib/">
+	<cfparam name="attributes.librarypath" default="/lib/">
+	<cfparam name="attributes.skinpath" default="#attributes.librarypath#skins/">
 	<cfparam name="attributes.xhtml" default="true" type="boolean">
 	<cfparam name="attributes.isAddable" default="true" type="boolean">
 	<cfparam name="attributes.isEditable" default="true" type="boolean">
@@ -82,11 +88,18 @@ Last Updated 2006-09-26
 	<cfparam name="attributes.isRowClickable" default="false" type="boolean">
 	<cfparam name="attributes.RolodexDelim" default=" ">
 	<cfparam name="attributes.TableSubmitValue" default="Submit">
+	<cfparam name="attributes.CatchErrTypes" default=" ">
 	<cfparam name="url.sebdeleteid#sfx#" default="">
 	<cfparam name="url.sebsort#sfx#" default="">
 	<cfparam name="url.sebsortorder#sfx#" default="ASC">
 	<cfparam name="url.sebstartrow#sfx#" default="1">
+	<cfif NOT ( isNumeric(URL["sebstartrow#sfx#"]) AND URL["sebstartrow#sfx#"] LTE (2^31) )>
+		<cfset URL["sebstartrow#sfx#"] = 1>
+	</cfif>
 	<cfparam name="url.sebstartpage#sfx#" default="1">
+	<cfif NOT ( isNumeric(URL["sebstartpage#sfx#"]) AND URL["sebstartpage#sfx#"] LTE (2^31) )>
+		<cfset URL["sebstartpage#sfx#"] = 1>
+	</cfif>
 	<cfparam name="url.sebrolodex#sfx#" default="">
 	<cfparam name="request.sebTableHasSorter#sfx#" default="false">
 	
@@ -105,18 +118,73 @@ Last Updated 2006-09-26
 		<cfparam name="attributes.isForm" default="false" type="boolean">
 	</cfif><!--- Create form if isForm is true --->
 	
+	<cfset sortorders = "ASC,DESC">
+	<cfif NOT ListFindNoCase(sortorders,url["sebsortorder#sfx#"])><cfset url["sebsortorder#sfx#"] = "ASC"></cfif>
+	
+	<!--- Get table defaults from component --->
+	<cfif
+			isDefined("attributes.CFC_Component")
+		AND (
+					StructKeyExists(attributes.CFC_Component,"getFieldsStruct")
+				OR	getMetaData(attributes.CFC_Component).extends.name EQ "_framework.PageController"
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Master"
+			)
+	>
+		<cftry>
+			<cfset sCompMeta = attributes.CFC_Component.getMetaStruct()>
+			<cfif StructKeyExists(sCompMeta,"arg_pk") AND Len(sCompMeta.arg_pk) AND NOT Len(attributes.pkfield)>
+				<cfset attributes.pkfield = sCompMeta.arg_pk>
+			</cfif>
+			<cfif StructKeyExists(sCompMeta,"label_Singular") AND Len(sCompMeta.label_Singular) AND NOT Len(Trim(attributes.label))>
+				<cfset attributes.label = sCompMeta.label_Singular>
+			</cfif>
+			<cfif StructKeyExists(sCompMeta,"method_gets") AND Len(sCompMeta.method_gets) AND NOT Len(attributes.CFC_GetMethod)>
+				<cfset attributes.CFC_GetMethod = sCompMeta.method_gets>
+			</cfif>
+			<cfif StructKeyExists(sCompMeta,"method_delete") AND Len(sCompMeta.method_delete) AND NOT Len(attributes.CFC_DeleteMethod)>
+				<cfset attributes.CFC_DeleteMethod = sCompMeta.method_delete>
+			</cfif>
+			<cfif StructKeyExists(sCompMeta,"method_sort") AND Len(sCompMeta.method_sort) AND NOT Len(attributes.CFC_SortMethod)>
+				<cfset attributes.CFC_SortMethod = sCompMeta.method_sort>
+			</cfif>
+			<cfif StructKeyExists(sCompMeta,"arg_sort") AND Len(sCompMeta.arg_sort) AND NOT Len(attributes.CFC_SortListArg)>
+				<cfset attributes.CFC_SortListArg = sCompMeta.arg_sort>
+			</cfif>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+	</cfif>
+	
 	<cfif Len(attributes.label)>
 		<cfparam name="attributes.showHeader" type="boolean" default="true">
 	<cfelse>
 		<cfparam name="attributes.showHeader" type="boolean" default="false">
 	</cfif>
 	
-	<cfset sortorders = "ASC,DESC">
-	<cfif NOT ListFindNoCase(sortorders,url["sebsortorder#sfx#"])><cfset url["sebsortorder#sfx#"] = "ASC"></cfif>
+	<!--- Get field defaults from component --->
+	<cfif
+			isDefined("attributes.CFC_Component")
+		AND (
+					StructKeyExists(attributes.CFC_Component,"getFieldsStruct")
+				OR	getMetaData(attributes.CFC_Component).extends.name EQ "_framework.PageController"
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Master"
+			)
+	>
+		<cftry>
+			<cfset attributes.sColumns = attributes.CFC_Component.getFieldsStruct("sebColumn")>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+	</cfif>
 	
-	<cfif Not ( Len(attributes.query) OR Len(attributes.datasource) OR ( isDefined("attributes.CFC_Component") AND Len(attributes.CFC_GetMethod) ) )>
+	<cfif NOT Len(Trim(attributes.pkfield))>
+		<cfthrow message="The pkfield attribute for cf_sebTable is required." type="ctag" errorcode="nopkfield">
+	</cfif>
+	
+	<cfif NOT ( Len(attributes.query) OR Len(attributes.datasource) OR ( isDefined("attributes.CFC_Component") AND Len(attributes.CFC_GetMethod) ) )>
 		<cfthrow message="Either the query attribute or datasource attribute must be provided." type="ctag">
 	</cfif>
+
 </cfif>
 <cfscript>
 useRolodex = false;
@@ -147,13 +215,13 @@ if ( url['sebstartpage#sfx#'] gt 1 ) {
 }
 
 
-if ( Not StructKeyExists(request, "cftags") ) {
+if ( NOT StructKeyExists(request, "cftags") ) {
 	request.cftags = StructNew();
 }
-if ( Not StructKeyExists(request.cftags, TagName) ) {
+if ( NOT StructKeyExists(request.cftags, TagName) ) {
 	request.cftags[TagName] = StructNew();
 }
-if ( Not StructKeyExists(request.cftags[TagName], "attributes") ) {
+if ( NOT StructKeyExists(request.cftags[TagName], "attributes") ) {
 	request.cftags[TagName].attributes = StructNew();
 }
 request.cftags[TagName].attributes = attributes;
@@ -165,6 +233,7 @@ request.cftags[TagName].attributes = attributes;
 
 <!--- Also should handle these deletions/sorts (and other deletion from table) --->
 <cfset Message = "">
+<cfset ErrMessage = "">
 
 <cfset doRedir = false>
 <cfset sorts = "+,-">
@@ -176,7 +245,7 @@ request.cftags[TagName].attributes = attributes;
 <cfset SubmitCol = 0>
 <cfset SubmitID = 0>
 <cfset SortList = "">
-<cfif isDefined("form.sebTable") AND form.sebTable eq sfx AND isDefined("Form.sebTableRows") AND isNumeric(Form.sebTableRows)>
+<cfif isDefined("Form.sebTable") AND Form.sebTable eq sfx AND isDefined("Form.sebTableRows") AND isNumeric(Form.sebTableRows)>
 	<cfif StructKeyExists(Form,"SortList") AND Len(Form.SortList)>
 		<cfset SortList = Form["SortList"]>
 	</cfif>
@@ -201,6 +270,14 @@ request.cftags[TagName].attributes = attributes;
 		</cfif>
 		<cfscript>
 		//Handle sort
+		if ( NOT isDefined("Form.Sort_#i#") ) {
+			if (  isDefined("Form.SortUp_#i#") OR ( isDefined("Form.SortUp_#i#.x") AND isDefined("Form.SortUp_#i#.y") )  ) {
+				Form["Sort_#i#"] = "+";
+			}
+			if (  isDefined("Form.SortDown_#i#") OR ( isDefined("Form.SortDown_#i#.x") AND isDefined("Form.SortDown_#i#.y") )  ) {
+				Form["Sort_#i#"] = "-";
+			}
+		}
 		if ( isDefined("Form.Sort_#i#") and ListFindNoCase(sorts,Form["Sort_#i#"]) ) {
 			isSorting = true;
 			if ( Form["Sort_#i#"] eq "+" ) {
@@ -255,16 +332,28 @@ request.cftags[TagName].attributes = attributes;
 		</cfif>
 		<!--- Only take action if we have a component --->
 		<cfif StructKeyExists(ThisTag.qColumns[i],"CFC_Component")>
-			<cfinvoke component="#ThisTag.qColumns[i].CFC_Component#" method="#ThisTag.qColumns[i].CFC_Method#">
-				<cfinvokeargument name="#attributes.pkfield#" value="#SubmitID#">
-				<cfif StructKeyExists(ThisTag.qColumns[i],"CFC_MethodArgs") AND isStruct(ThisTag.qColumns[i].CFC_MethodArgs)>
-					<cfloop collection="#ThisTag.qColumns[i].CFC_MethodArgs#" item="arg">
-						<cfinvokeargument name="#arg#" value="#ThisTag.qColumns[i].CFC_MethodArgs[arg]#">
-					</cfloop>
+			<cftry>
+				<cfinvoke component="#ThisTag.qColumns[i].CFC_Component#" method="#ThisTag.qColumns[i].CFC_Method#" returnvariable="CFC_Result">
+					<cfinvokeargument name="#attributes.pkfield#" value="#SubmitID#">
+					<cfif StructKeyExists(ThisTag.qColumns[i],"CFC_MethodArgs") AND isStruct(ThisTag.qColumns[i].CFC_MethodArgs)>
+						<cfloop collection="#ThisTag.qColumns[i].CFC_MethodArgs#" item="arg">
+							<cfinvokeargument name="#arg#" value="#ThisTag.qColumns[i].CFC_MethodArgs[arg]#">
+						</cfloop>
+					</cfif>
+				</cfinvoke>
+			<cfcatch type="Any">
+				<cfif Len(attributes.CatchErrTypes) AND ListFindNoCase(attributes.CatchErrTypes,cfcatch.type)>
+					<cfset ErrMessage = CFCATCH.Message>
+				<cfelse>
+					<cfrethrow>
 				</cfif>
-			</cfinvoke>
+			</cfcatch>
+			</cftry>
 			<cfif StructKeyExists(ThisTag.qColumns[i],"Message") AND Len(ThisTag.qColumns[i].Message)>
 				<cfset Message = ThisTag.qColumns[i].Message>
+				<cfif isDefined("CFC_Result")>
+					<cfset Message = ReplaceNoCase(Message, "{result}", CFC_Result, "ALL")>
+				</cfif>
 			<cfelse>
 				<cfset doRedir = true>
 			</cfif>
@@ -280,7 +369,7 @@ request.cftags[TagName].attributes = attributes;
 			</cfloop>
 		</cfif>
 		<cfloop collection="#Form#" item="arg">
-			<cfif NOT Left(arg,8) eq "sebTable" AND NOT ( StructKeyExists(attributes,"CFC_MethodArgs") AND StructKeyExists(attributes["CFC_MethodArgs"],arg) )>
+			<!--- NOT Left(arg,8) eq "sebTable" AND  ---><cfif NOT ( StructKeyExists(attributes,"CFC_MethodArgs") AND StructKeyExists(attributes["CFC_MethodArgs"],arg) )>
 				<cfinvokeargument name="#arg#" value="#Form[arg]#">
 			</cfif>
 		</cfloop>
@@ -290,13 +379,14 @@ request.cftags[TagName].attributes = attributes;
 
 <cfif isDeleting>
 	<cfif isDefined("attributes.CFC_Component") AND Len(attributes.CFC_DeleteMethod)>
-		<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_DeleteMethod#">
-			<cfinvokeargument name="#attributes.pkfield#" value="#DeleteID#">
-			<cfif isStruct(attributes.CFC_DeleteArgs)>
-				<cfloop collection="#attributes.CFC_DeleteArgs#" item="arg">
-					<cfinvokeargument name="#arg#" value="#attributes.CFC_DeleteArgs[arg]#">
-				</cfloop>
-			</cfif>
+		<cfset sArgs = StructNew()>
+		<cfset sArgs[attributes.pkfield] = DeleteID>
+		<cfif isStruct(attributes.CFC_DeleteArgs)>
+			<cfloop collection="#attributes.CFC_DeleteArgs#" item="arg">
+				<cfset sArgs[arg] = attributes.CFC_DeleteArgs[arg]>
+			</cfloop>
+		</cfif>
+		<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_DeleteMethod#" argumentcollection="#sArgs#">
 		</cfinvoke>
 	<cfelseif Len(attributes.table)>
 		<cfquery name="qTableDelete" datasource="#attributes.datasource#">
@@ -308,9 +398,21 @@ request.cftags[TagName].attributes = attributes;
 	<cfset doRedir = true>
 </cfif>
 
+<cfif Len(ErrMessage)>
+	<cfset doRedir = false>
+</cfif>
+
 <cfif doRedir>
-	<cfset QueryString = ReplaceNoCase(CGI.QUERY_STRING, "sebdeleteid#sfx#=#url['sebdeleteid#sfx#']#", "")>
-	<cflocation url="#CGI.SCRIPT_NAME#?#QueryString#" addtoken="No">
+	<cfset QueryString = CGI.QUERY_STRING>
+	<cfset QueryString = ReplaceNoCase(QueryString, "sebdeleteid#sfx#=#url['sebdeleteid#sfx#']#", "")>
+	<cfif StructKeyExists(URL,"sebTableAction")>
+		<cfset QueryString = ReplaceNoCase(QueryString, "&sebTableAction=#url['sebTableAction']#", "")>
+	</cfif>
+	<cfset QueryString = ReplaceNoCase(QueryString, "&&", "&", "ALL")>
+	<cfif Right(QueryString,1) NEQ "&">
+		<cfset QueryString = "#QueryString#&">
+	</cfif>
+	<cflocation url="#CGI.SCRIPT_NAME#?#QueryString#sebTableAction=#sfx###sebTable#sfx#" addtoken="No">
 </cfif>
 
 <cfset liColumns = "">
@@ -337,7 +439,7 @@ request.cftags[TagName].attributes = attributes;
 		</cfif>
 	</cfif>
 </cfloop>
-<cfif Not Len(attributes.orderby) AND Not ListFindNoCase(liLabels, url["sebSort#sfx#"])><cfset url["sebsort#sfx#"] = ThisTag.qColumns[1].label></cfif>
+<cfif NOT Len(attributes.orderby) AND Not ListFindNoCase(liLabels, url["sebSort#sfx#"])><cfset url["sebsort#sfx#"] = ThisTag.qColumns[1].label></cfif>
 
 <cfif Len(attributes.query) OR ( isDefined("attributes.CFC_Component") AND Len(attributes.CFC_GetMethod) )>
 	<cfif Len(attributes.query)>
@@ -353,11 +455,15 @@ request.cftags[TagName].attributes = attributes;
 	<cfif Len(Trim(attributes.filter)) OR Len(url["sebsort#sfx#"]) OR ( Len(RolodexField) AND Len(Trim(url["sebrolodex#sfx#"]) eq 1) ) OR Len(attributes.orderby)>
 		<cfif Len(url["sebsort#sfx#"])>
 			<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
-				<cfif url["sebsort#sfx#"] eq ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield)>
+				<cfif url["sebsort#sfx#"] EQ ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield) AND ThisTag.qColumns[i].type NEQ "Date">
 					<cfif NOT ListFindNoCase(qTableData.ColumnList,"#ThisTag.qColumns[i].sortfield#_UCase")>
 						<cfset aSortVals = ArrayNew(1)>
 						<cfloop query="qTableData">
-							<cfset ArrayAppend(aSortVals,UCase(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]))>
+							<!--- <cfif isDate(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]) OR isNumeric(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow])>
+								<cfset ArrayAppend(aSortVals,qTableData[ThisTag.qColumns[i].sortfield][CurrentRow])>
+							<cfelse> --->
+								<cfset ArrayAppend(aSortVals,UCase(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]))>
+							<!--- </cfif> --->
 						</cfloop>
 						<cfset QueryAddColumn(qTableData, "#ThisTag.qColumns[i].sortfield#_UCase",  aSortVals)>
 					</cfif>
@@ -385,7 +491,7 @@ request.cftags[TagName].attributes = attributes;
 			<cfif Len(url["sebsort#sfx#"])><cfset sortcount = 0>
 				<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 					<cfif url["sebsort#sfx#"] eq ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield)>
-					<cfif sortcount>,<cfelse>ORDER BY</cfif>	#ThisTag.qColumns[i].sortfield#_UCase<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
+					<cfif sortcount>,<cfelse>ORDER BY</cfif>	#ThisTag.qColumns[i].sortfield#<cfif ThisTag.qColumns[i].type NEQ "Date">_UCase</cfif><cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
 					</cfif>
 				</cfloop>
 			<cfelseif Len(attributes.orderby)>
@@ -394,7 +500,7 @@ request.cftags[TagName].attributes = attributes;
 			</cfquery>
 			<cfcatch type="Expression">
 				<!--- Catch and handle bug in cf on how it guesses datatypes for QofQ --->
-				<cfif NOT CFCATCH.Message CONTAINS "cannot be converted">
+				<cfif NOT ( isNumeric(CFCATCH.Message) OR CFCATCH.Message CONTAINS "cannot be converted" ) >
 					<cfrethrow>
 				</cfif>
 				
@@ -472,12 +578,59 @@ request.cftags[TagName].attributes = attributes;
 	</cfquery>
 </cfif>
 
+<!--- Check for individual row updates --->
+<cfif isSubmittingTable AND StructKeyExists(attributes,"CFC_Component") AND StructKeyExists(attributes,"CFC_RowMethod")>
+	<cfset hasUpdatedRow = false>
+	<!--- Check for updates by query row --->
+	<cfloop query="qTableData">
+		<cfset isRowUpdating = false>
+		<cfset pkid = qTableData[attributes.pkfield][CurrentRow]>
+		<cfset RowFormData = StructNew()>
+		<!---
+		Check only where row number and currentrow match
+		(if data has changed since submit, some updates may not take
+			- better than huge performance hit or messed up data)
+		--->
+		<cfif StructKeyExists(Form,"sebTable_#CurrentRow#") AND Form["sebTable_#CurrentRow#"] EQ pkid>
+			<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
+				<!--- Check each column that is both submitted in a named form field and has a database field --->
+				<cfif
+						StructKeyExists(ThisTag.qColumns[i],"name")
+					AND	StructKeyExists(ThisTag.qColumns[i],"dbfield")
+					AND	Len(ThisTag.qColumns[i].dbfield)
+					AND	StructKeyExists(Form,"#ThisTag.qColumns[i].name#_#CurrentRow#")
+				>
+					<!--- Set structure data (may need it - can't tell yet) --->
+					<cfset RowFormData[ThisTag.qColumns[i].name] = Form["#ThisTag.qColumns[i].name#_#CurrentRow#"]>
+					<!--- If data has changed, need to update this row (including data from previously checked rows which is why we load into struct first) --->
+					<cfif RowFormData[ThisTag.qColumns[i].name] NEQ qTableData[ThisTag.qColumns[i].dbfield][CurrentRow]>
+						<cfset isRowUpdating = true>
+					</cfif>
+				</cfif>
+			</cfloop>
+			<!--- If this row is updating, call the function and pass in each form field by its name --->
+			<cfif isRowUpdating>
+				<cfinvoke component="#attributes.CFC_Component#" method="#attributes.CFC_RowMethod#" argumentcollection="#RowFormData#"></cfinvoke>
+				<cfset hasUpdatedRow = true><!--- We have to know we updated so that we can forward back to this page with the new data --->
+			</cfif>
+		</cfif>
+	</cfloop>
+	<!--- Make sure to relocate if we updated, so the query can run again with the newly updated data --->
+	<cfif hasUpdatedRow>
+		<cfset QueryString = ReplaceNoCase(CGI.QUERY_STRING, "sebdeleteid#sfx#=#url['sebdeleteid#sfx#']#", "")>
+		<cflocation url="#CGI.SCRIPT_NAME#?#QueryString#" addtoken="No">
+	</cfif>
+</cfif>
+
 <cfscript>
 if ( attributes.maxrows eq 0 ) {
 	attributes.maxrows = qTableData.RecordCount;
 }
 if ( qTableData.RecordCount gt attributes.maxrows ) {
 	useRolodex = true;
+}
+if ( attributes.rowlimit GT 0 AND qTableData.RecordCount GTE attributes.rowlimit ) {
+	attributes.isAddable = false;
 }
 numRecords = Min(attributes.maxrows,qTableData.RecordCount);
 EndRow = Min((url["sebstartrow#sfx#"] + numRecords - 1),qTableData.RecordCount);
@@ -495,6 +648,10 @@ requiresSubmit = false;
 
 varThisPage = CGI.SCRIPT_NAME;
 varQueryString = CGI.Query_String;
+if ( StructKeyExists(URL,"sebTableAction") ) {
+	varQueryString = ReplaceNoCase(varQueryString, "&sebTableAction=#url['sebTableAction']#", "");
+}
+varQueryString = ReplaceNoCase(varQueryString, "&&", "&", "ALL");
 thisName = "";
 //Ditch url variables previously created by this tag from links in this tag (but keep url vars not created by this tag)
 liTagUrlVars = "sebdeleteid#sfx#,sebsort#sfx#,sebsortorder#sfx#,sebrolodex#sfx#,sebstartrow#sfx#,sebstartpage#sfx#";
@@ -552,7 +709,7 @@ arrHiddenPK = ArrayNew(1);
 </cfscript>
 
 </cfsilent><cfoutput><cfsavecontent variable="htmlhead"><style type="text/css"><cfif attributes.isRowClickable>.sebTable tr {cursor:pointer;}; .sebTable td, </cfif>.sebTable th {text-align:left;}</style><cfif Len(attributes.skin)>
-<style type="text/css">@import url(#attributes.librarypath#skins/#attributes.skin#.css);</style></cfif>
+<style type="text/css">@import url(#attributes.skinpath##attributes.skin#.css);</style></cfif>
 <!--[if IE 6]><style type="text/css">.sebTable th a {height:1%;}</style><![endif]-->
 <cfif attributes.isDeletable OR attributes.isRowClickable OR Len(attributes.classOver)><script type="text/javascript"><cfif attributes.isDeletable>
 function sebDeleteIt(id,name) {
@@ -571,8 +728,10 @@ function seb#sfx##attributes.Table##sfx#Off(obj) {
 	obj.className=obj.className.replace(new RegExp(" #attributes.classOver#\\b"), "");
 }</cfif>
 </script></cfif></cfsavecontent><cfhtmlhead text="#htmlhead#">
-<div id="sebTable" class="seb sebTable"<cfif Len(attributes.width)> style="width:#attributes.width#px;"</cfif>><cfif Len(Message)>
-<p class="sebTableMessage">#Message#</p></cfif><cfif attributes.isForm>
+<div<cfif Len(Trim(attributes.skin))> class="sebTable-skin-#LCase(attributes.skin)#"</cfif>>
+<div id="sebTable" class="seb sebTable"<cfif Len(attributes.width)> style="width:#attributes.width#<cfif isNumeric(attributes.width)>px</cfif>;"</cfif>><cfif Len(ErrMessage)>
+<p class="sebMessage sebError">#ErrMessage#</p></cfif><cfif Len(Message)>
+<p class="sebMessage">#Message#</p></cfif><cfif attributes.isForm>
 <form action="#CGI.SCRIPT_NAME#?#XmlFormat(CGI.QUERY_STRING)#" method="post" name="frmSebTable#sfx#" id="frmSebTable#sfx#"><input type="hidden" name="sebTable" value="#sfx#"/></cfif>
 	<cfif attributes.showHeader><p class="sebTableCount"><cfif EndRow>(#url["sebstartrow#sfx#"]# - #EndRow#) of </cfif>#qTableData.RecordCount# record<cfif numRecords neq 1>s</cfif></p></cfif>
 	<cfif attributes.showHeader><p class="sebHeader"><cfif Len(attributes.label)><strong>#attributes.label# #attributes.labelSuffix#</strong></cfif><cfif attributes.isAddable> [<a href="#attributes.editpage#">Add New #attributes.label#</a>]</cfif></p></cfif>
@@ -629,6 +788,24 @@ function seb#sfx##attributes.Table##sfx#Off(obj) {
 	}
 	
 	thisDisplay = ThisTag.qColumns[i].display(thisValue,CurrentRow,pkid,ThisTag.qColumns[i]);
+	//Adjust display by show and link atts
+	if ( (isBoolean(ThisTag.qColumns[i].show) AND ThisTag.qColumns[i].show) OR doShow(ThisTag.qColumns[i].show,CurrentRow) ) {
+		if ( Len(ThisTag.qColumns[i].link) AND NOT ThisTag.qColumns[i].type eq "link" ) {
+			if ( StructKeyExists(ThisTag.qColumns[i],"title") AND Len(ThisTag.qColumns[i].title) ) {
+				linkatts = ' title="#ThisTag.qColumns[i].title#"';
+			} else {
+				linkatts = '';
+			}
+			if ( StructKeyExists(ThisTag.qColumns[i],"target") AND Len(ThisTag.qColumns[i].target) ) {
+				linkatts = '#linkatts# target="#ThisTag.qColumns[i].target#"';
+			}
+			thisDisplay = '<a href="#ThisTag.qColumns[i].link##pkid#"#linkatts#>#thisDisplay#</a>&nbsp;';
+		} else {
+			thisDisplay = thisDisplay;
+		}
+	} else {
+		thisDisplay = ThisTag.qColumns[i].noshowalt;
+	}
 	
 	if ( hasInputs AND NOT arrHiddenPK[CurrentRow] ) {//ThisTag.qColumns[i].isInput AND NOT arrHiddenPK[CurrentRow]
 		thisDisplayHidden = '<input type="hidden" name="sebTable_#CurrentRow#" id="sebTable#CurrentRow#" value="#pkid#"/>';
@@ -646,17 +823,18 @@ function seb#sfx##attributes.Table##sfx#Off(obj) {
 	}
 	</cfscript><cfif ThisTag.qColumns[i].datatype eq "delete" AND attributes.isEditable AND NOT editLinkShowed>
 	<td>&nbsp;<a href="#varEditPage##pkid#">edit</a>&nbsp;</td><cfset editLinkShowed = true></cfif>
-	<td<cfif attributes.isRowClickable AND Not Len(ThisTag.qColumns[i].link) AND NOT ThisTag.qColumns[i].type eq "link"> onclick="sebEditIt('#JSStringFormat(URLEncodedFormat(pkid))#');"</cfif>><cfif (isBoolean(ThisTag.qColumns[i].show) AND ThisTag.qColumns[i].show) OR show(ThisTag.qColumns[i].show,CurrentRow)><cfif Len(ThisTag.qColumns[i].link) AND NOT ThisTag.qColumns[i].type eq "link"><a href="#ThisTag.qColumns[i].link##pkid#"<cfif StructKeyExists(ThisTag.qColumns[i],"title") AND Len(ThisTag.qColumns[i].title)> title="#ThisTag.qColumns[i].title#"</cfif>>#thisDisplay#</a>&nbsp;<cfelse>#thisDisplay#</cfif><cfelse>#ThisTag.qColumns[i].noshowalt#</cfif></td></cfloop><cfif attributes.isEditable AND NOT editLinkShowed>
+	<td<cfif attributes.isRowClickable AND NOT Len(ThisTag.qColumns[i].link) AND NOT ThisTag.qColumns[i].type eq "link"> onclick="sebEditIt('#JSStringFormat(URLEncodedFormat(pkid))#');"</cfif>>#thisDisplay#</td></cfloop><cfif attributes.isEditable AND NOT editLinkShowed>
 	<td class="sebTable-editlink">&nbsp;<a href="#varEditPage##URLEncodedFormat(pkid)#">edit</a>&nbsp;</td></cfif><cfif attributes.isDeletable AND NOT deleteShowed>
-	<td class="sebTable-deletelink">&nbsp;<a href="##" onclick="javascript:sebDeleteIt('#pkid#','#JSStringFormat(thisName)#');">delete</a>&nbsp;</td></cfif>
+	<td class="sebTable-deletelink">&nbsp;<a href="##" onclick="javascript:sebDeleteIt('#pkid#','#JSStringFormat(XmlFormat(thisName))#');">delete</a>&nbsp;</td></cfif>
 </tr><cfset thisName = ""></cfloop>
 </table><cfif hasInputs><input type="hidden" name="sebTableRows" id="sebTableRows" value="#qTableData.RecordCount#"/></cfif><cfif attributes.isForm><cfif requiresSubmit>
-<p><input name="sebTableSubmit" type="submit" value="#attributes.tableSubmitValue#"/></p>
+<p><input name="sebTableSubmit" type="hidden" value="#attributes.tableSubmitValue#"/><input type="submit" value="#attributes.tableSubmitValue#"/></p>
 </cfif>
 </cfif>
 <cfelse>
 <p>(No #attributes.label# Records)</p>
 </cfif><cfif attributes.isForm></form></cfif>
+</div>
 </div>
 </cfoutput>
 </cfif>

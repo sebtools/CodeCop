@@ -1,8 +1,11 @@
-<cfsilent>
 <!---
-Version 0.9.4 Build 90
-Last Updated 2006-08-08
---->
+1.0 RC2 (Build 111)
+Last Updated: 2008-09-04
+Created by Steve Bryant 2004-06-01
+Information: sebtools.com
+Documentation:
+http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
+---><cfsilent>
 <cfset TagName = "cf_sebColumn">
 <cfset ParentTag = "cf_sebTable">
 <cfif Not ListFindNoCase(GetBaseTagList(), ParentTag)>
@@ -12,7 +15,27 @@ Last Updated 2006-08-08
 	<cfassociate basetag="#ParentTag#" datacollection="qColumns">
 	<cfset ParentAtts = request.cftags[ParentTag].attributes>
 	<cfset sfx = ParentAtts.suffix>
-	<cfset ColumnTypes = "text,numeric,date,yesno,icon,checkbox,radio,input,select,sorter,delete,submit,link,money,html">
+	<cfscript>
+	if ( StructKeyExists(attributes,"dbfield") AND StructKeyExists(ParentAtts,"sColumns") AND isStruct(ParentAtts.sColumns) AND StructKeyExists(ParentAtts.sColumns,attributes.dbfield) AND isStruct(ParentAtts.sColumns[attributes.dbfield]) ) {
+		for (att in ParentAtts.sColumns[attributes.dbfield]) {
+			if ( NOT StructKeyExists(attributes,att) ) {
+				attributes[att] = ParentAtts.sColumns[attributes.dbfield][att];
+			}
+		}
+	}
+	if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagName) ) {
+		StructAppend(attributes, request.cftags[TagName], "no");
+	}
+	if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "sebtags") ) {
+		StructAppend(attributes, request.cftags["sebtags"], "no");
+	}
+	//A little hacky way to show a different field than told in dbfield
+	if ( StructKeyExists(attributes,"listshowfield") ) {
+		attributes.dbfield = attributes.listshowfield;
+	}
+	</cfscript>
+	<cfset attributes.ParentAtts = ParentAtts>
+	<cfset ColumnTypes = "text,numeric,date,datetime,yesno,icon,checkbox,radio,input,select,sorter,delete,submit,link,money,html">
 	<cfset dbcolumns = "text,date,yesno,icon,money">
 	<cfparam name="attributes.name" default="">
 	<cfparam name="attributes.DataType" default="text"><!--- text,date,yesno,icon,checkbox,input,select,delete --->
@@ -37,8 +60,9 @@ Last Updated 2006-08-08
 	<cfif Len(attributes.sortfield) AND ( attributes.defaultSort eq "ASC" OR attributes.defaultSort eq "DESC" ) AND NOT Len(ParentAtts.orderby) >
 		<cfset ParentAtts.orderby = "#attributes.sortfield# #attributes.defaultSort#">
 	</cfif>
-	<cfswitch expression="#attributes.DataType#">
+	<cfswitch expression="#attributes.type#">
 		<cfcase value="date"><cfparam name="attributes.mask" default="m/dd/yyyy"></cfcase>
+		<cfcase value="datetime"><cfparam name="attributes.mask" default="m/dd/yyyy; h:mm:ss tt"></cfcase>
 		<cfdefaultcase><cfparam name="attributes.mask" default=""></cfdefaultcase>
 	</cfswitch>
 	<cfparam name="attributes.rolodex" default="false" type="boolean">
@@ -125,6 +149,18 @@ Last Updated 2006-08-08
 				var result = value;
 				if ( isDate(result) OR isNumericDate(result) ) {
 					result = DateFormat(result,atts.mask);
+				}
+				return result;
+			}
+			</cfscript>
+		</cfcase>
+		<cfcase value="datetime">
+			<cfscript>
+			function display_datetime(value,rownum,pkid,atts) {
+				var result = value;
+				if ( isDate(result) OR isNumericDate(result) ) {
+					result = DateFormat(value,ListFirst(atts.mask,";"));
+					result = result & TimeFormat(value,ListLast(atts.mask,";"));
 				}
 				return result;
 			}
@@ -283,7 +319,11 @@ Last Updated 2006-08-08
 				
 				<!--- Make sure that value is a positive integer --->
 				<cfif isNumeric(value) AND (Value eq Int(value))><!---  AND (value gt 0) --->
-					<cfsavecontent variable="result"><cfoutput><div style="width:48px;"><cfif rownum eq 1><input type="button" name="sort_#rownum#" value="" style="width:24px;height:20px;"/><cfelse><input type="submit" name="sort_#rownum#" value="+" style="width:24px;height:20px;"/></cfif><cfif StructKeyExists(atts,"isLastRow")><input type="button" name="sort_#rownum#" value=" " style="width:24px;height:20px;"/><cfelse><input type="submit" name="sort_#rownum#" value="-" style="width:24px;height:20px;"/></cfif><!---  (#value#) ---></div></cfoutput></cfsavecontent>
+					<cfif StructKeyExists(atts,"arrowup") AND Len(atts.arrowup) AND StructKeyExists(atts,"arrowdown") AND Len(atts.arrowdown)>
+						<cfsavecontent variable="result"><cfoutput><div style="width:48px;"><cfif rownum eq 1><input type="image" src="#atts.ParentAtts.LibraryPath#i.gif" name="sort_#rownum#" value="" class="sebTable-sort-null" style="width:16px;height:16px;"/><cfelse><input type="image" src="#atts.arrowup#" name="SortUp_#rownum#" value="+" class="sebTable-sort-up" style="width:16px;height:16px;"/></cfif><cfif StructKeyExists(atts,"isLastRow")><input type="image" src="#atts.ParentAtts.LibraryPath#i.gif" name="sort_#rownum#" value=" " class="sebTable-sort-null" style="width:16px;height:16px;"/><cfelse><input type="image" src="#atts.arrowdown#" name="SortDown_#rownum#" value="-" class="sebTable-sort-down" style="width:16px;height:16px;"/></cfif><!---  (#value#) ---></div></cfoutput></cfsavecontent>
+					<cfelse>
+						<cfsavecontent variable="result"><cfoutput><div style="width:48px;"><cfif rownum eq 1><input type="button" name="sort_#rownum#" value="" class="sebTable-sort-null" style="width:24px;height:20px;"/><cfelse><input type="submit" name="SortUp_#rownum#" value="+" class="sebTable-sort-up" style="width:24px;height:20px;"/></cfif><cfif StructKeyExists(atts,"isLastRow")><input type="button" name="sort_#rownum#" value=" " class="sebTable-sort-null" style="width:24px;height:20px;"/><cfelse><input type="submit" name="SortDown_#rownum#" value="-" class="sebTable-sort-down" style="width:24px;height:20px;"/></cfif><!---  (#value#) ---></div></cfoutput></cfsavecontent>
+					</cfif>
 				</cfif>
 				
 				<cfreturn result>
@@ -343,6 +383,8 @@ Last Updated 2006-08-08
 				<cfset var result = "">
 				<cfset var link = atts.link>
 				<cfset var col = "">
+				<cfset var linkatts = "title,target">
+				<cfset var linkatt = "">
 				
 				<cfif rownum>
 					<cfloop index="col" list="#qTableData.ColumnList#">
@@ -352,7 +394,7 @@ Last Updated 2006-08-08
 					</cfloop>
 				</cfif>
 				
-				<cfsavecontent variable="result"><cfoutput><a href="#link#"<cfif StructKeyExists(atts,"title")> title="#atts.title#"</cfif>>#value#</a></cfoutput></cfsavecontent>
+				<cfsavecontent variable="result"><cfoutput><a href="#link#"<cfloop index="linkatt" list="#linkatts#"><cfif StructKeyExists(atts,linkatt)> #linkatt#="#atts[linkatt]#"</cfif></cfloop>>#value#</a></cfoutput></cfsavecontent>
 				
 				<cfreturn result>
 			</cffunction>
