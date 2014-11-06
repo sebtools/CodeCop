@@ -1,0 +1,28 @@
+body, p, td {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: small; ! important;
+}
+
+/* For use on file view page */
+.file-view {
+	background-color:#F6F6F6;
+	border:1px solid #333333;
+	padding:6px;
+}
+a.highlighted {background-color:#FFFF00;color:black;text-decoration:none;}
+a.highlighted:hover {background-color:#AAFF77;color:black;text-decoration:none;}
+a.urgent {background-color:#FF8888;color:black;text-decoration:none;}
+a.urgent {background-color:#FFBF00;color:black;text-decoration:none;}
+a.urgent:hover {background-color:#AAFF77;color:black;text-decoration:none;}
+
+.warning {
+	color:#990000;
+	font-weight:bold;
+}
+.line-num {
+	background-color:#F6F6F6;
+	color:black;
+	font-weight:normal;
+	text-decoration:none;
+}
+.strong {font-size:small;font-weight:bold;}

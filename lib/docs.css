@@ -1,0 +1,4 @@
+td,center,th,p,li,blockquote,form { font-family: Verdana, Arial, Helvetica, sans-serif; color: #000000; font-size: 15px; }
+.Heading { font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 18px; font-style: italic; font-weight: bold; }
+A:LINK, A:VISITED { text-decoration: none; color: #3300CC }
+A:HOVER { background: #333399; color: #ffffff; }

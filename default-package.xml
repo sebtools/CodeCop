@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<package name="Default">
+	<rule name="Don&apos;t use a relative URL in cfschedule" severity="High" uuid="ADCF013B-F646-41EE-7E1AC113BEAD2D9B" type="Tag" tagname="cfschedule" regex="" description="cfschedule relies on cfhttp and needs an absolute URL to function correctly." allExtensions="1" customcode="&lt;cfif StructKeyExists(info,&quot;attributes&quot;) AND StructKeyExists(info.attributes,&quot;url&quot;) AND Left(info.attributes.url,&quot;4&quot;) neq &quot;http&quot;&gt;  &lt;cfset result = true&gt; &lt;cfelse&gt;  &lt;cfset result = false&gt; &lt;/cfif&gt;" extensions="" category="Maintenance">
+	</rule>
+	<rule name="Use the accept attribute when uploading a file" severity="High" uuid="ADD87817-9CF7-7399-A048CBD48A8810BF" type="Tag" tagname="cffile" regex="" description="Using the accept attribute allows you to limit the kinds of files that can be uploaded and thereby help prevent uploading malicious files." allExtensions="1" customcode="&lt;cfif StructKeyExists(info,&quot;attributes&quot;) AND StructKeyExists(info.attributes,&quot;action&quot;) AND info.attributes.action eq &quot;upload&quot; AND NOT StructKeyExists(info.attributes,&quot;accept&quot;)&gt;
+	&lt;cfset result = true&gt;
+&lt;cfelse&gt;
+	&lt;cfset result = false&gt;
+&lt;/cfif&gt;" extensions="" category="Security">
+		<link text="Mime Types" url="http://www.webmaster-toolkit.com/mime-types.shtml"/>
+		<link text="Mime Reference" url="http://www.w3schools.com/media/media_mimeref.asp"/>
+	</rule>
+	<rule name="Avoid Evaluate()." severity="Medium" uuid="553985BD-C357-5645-5983D5235AD96190" type="Regex" tagname="" regex="Evaluate(?=\()" description="Evaluate runs slowly. Usually an approach using scopes as structures will obviate the need for Evaluate()." allExtensions="1" customcode="" extensions="" category="Performance">
+		<link text="Ditch ColdFusion Evaluate()" url="http://steve.coldfusionjournal.com/ditch_coldfusion_evaluate.htm"/>
+	</rule>
+	<rule name="Don&apos;t start includes with /" severity="Medium" uuid="58CB110A-AEE1-8D3E-9AE282DF3CD2195A" type="Regex" tagname="" regex="&lt;cfinclude[^&gt;]*&gt;" description="" allExtensions="1" customcode="&lt;cfset result = false&gt;
+&lt;cfif ReFindNoCase(&quot;template=&quot;&quot;/&quot;,string)&gt;
+	&lt;cfset result = true&gt;
+&lt;/cfif&gt;" extensions="" category="Maintenance">
+	</rule>
+	<rule name="Avoid Shared Scopes in CFCs." severity="Medium" uuid="61323310-057B-6975-CE7B00AA7D3FB880" type="Regex" tagname="" regex="\b(form|application|url|session|server|cgi|client|request|cookie)(?=(\[|\.\w))" description="Avoid using shared scope variables from within a CFC as it breaks encapsulation." allExtensions="0" customcode="" extensions="cfc" category="Maintenance">
+	</rule>
+	<rule name="Prefer isDefined() over ParameterExists()." severity="Medium" uuid="553985B3-AC71-772A-299A01D6F1ED4724" type="Regex" tagname="" regex="ParameterExists" description="ParameterExists has been deprecated in favor of isDefined." allExtensions="1" customcode="" extensions="" category="Performance">
+	</rule>
+	<rule name="Don&apos;t nest cflock tags" severity="Medium" uuid="AD0E3D47-D9F0-6BAC-6E2FD671C8646F5A" type="Tag" tagname="cflock" regex="cflock" description="Avoid nesting cflock as it can lead to long-running code." allExtensions="1" customcode="&lt;cfif StructKeyExists(info,&quot;innerCFML&quot;) AND info.innerCFML CONTAINS &quot;&lt;/cflock&gt;&quot;&gt;
+	&lt;cfset result = true&gt;
+&lt;cfelse&gt;
+	&lt;cfset result = false&gt;
+&lt;/cfif&gt;" extensions="" category="Performance">
+		<link text="cflock" url="http://livedocs.macromedia.com/coldfusion/7/htmldocs/00000285.htm"/>
+	</rule>
+	<rule name="Use hint attribute of cfcomponent and cffunction" severity="Medium" uuid="ADD64A2D-04E1-7903-F57E2625DDDDBEFF" type="Tag" tagname="cfcomponent,cffunction" regex="" description="The hint attribute of cfcomponent and cffunction helps documentation and shows up the automatically generated documentation of a CFC." allExtensions="0" customcode="&lt;cfif StructKeyExists(info,&quot;attributes&quot;) AND NOT StructKeyExists(info.attributes,&quot;hint&quot;)&gt;
+	&lt;cfset result = true&gt;
+&lt;cfelse&gt;
+	&lt;cfset result = false&gt;
+&lt;/cfif&gt;" extensions="cfc" category="Maintenance">
+	</rule>
+	<rule name="Prefer StructKeyExists() over isDefined()." severity="Low" uuid="55398595-D0FF-9736-00774F84655F14B4" type="Regex" tagname="" regex="isDefined" description="StructKeyExists is faster than isDefined." allExtensions="1" customcode="" extensions="" category="Performance">
+	</rule>
+	<rule name="Prefer Len Over Empty String Tests" severity="Low" uuid="6133295A-EB8B-23A8-C7EA16875324FB12" type="Regex" tagname="" regex="is &quot;&quot;|eq &quot;&quot;" description="" allExtensions="1" customcode="" extensions="" category="Maintenance">
+	</rule>
+</package>

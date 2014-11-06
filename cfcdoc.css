@@ -1,0 +1,27 @@
+.cfcdoc {
+	font-family: verdana, arial, helvetica, sans-serif;
+	font-size: 12px;
+}
+
+table.cfcdoc {
+	font-size: 11px;
+	font-family: Verdana, arial, helvetica, sans-serif;
+	width: 90%;
+}
+
+.cfcdoc th {
+	padding: 6px;
+	font-size: 12px;
+	background-color: #cccccc;
+}
+
+.cfcdoc td {
+	padding: 6px;
+	background-color: #eeeeee;
+	font-size: 12px;
+	vertical-align : top;
+}
+
+.cfcdoc code {
+	color: #000099 ;
+}

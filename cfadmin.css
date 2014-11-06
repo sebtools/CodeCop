@@ -1,0 +1,72 @@
+/* Relevant CSS from the CF Admin */
+body {
+	background-color:#6C7A83;
+}
+body, p, td {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: x-small; ! important;
+}
+
+a {
+	color: #003399;
+	text-decoration: none;
+}
+
+a:hover {
+	color: #008A00; 
+}
+
+h1 {
+	color: #000000;
+	font-weight: bold;
+	font-size: small;
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+.infobox {
+	border:1px solid #DDDDDD;
+	width:500px;
+	padding:5px 10px 10px 10px;
+}
+.infobox ul, .infobox li {
+	margin-top:0;
+	padding-top:0;
+}
+
+.pageHeader {
+	color: #0072AC;
+	font-weight: bold;
+	font-size: medium; ! important;
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+.copyright {
+	color: #FFFFFF;
+	font-size: x-small;
+}
+
+.copyrightLink {
+	color: #FFFFCC; 
+	font-size: x-small;
+}
+
+/* For use on file view page */
+.file-view {
+	background-color:#F6F6F6;
+	border:1px solid #333333;
+	padding:6px;
+}
+a.highlighted {background-color:#FFFF00;color:black;}
+a.highlighted:hover {background-color:#AAFF77;color:black;}
+a.urgent {background-color:#FF8888;color:black;}
+a.urgent {background-color:#FFBF00;color:black;}
+a.urgent:hover {background-color:#AAFF77;color:black;}
+
+.warning {
+	color:#990000;
+	font-weight:bold;
+}
+.line-num {color:black;}
+.strong {font-size:small;font-weight:bold;}

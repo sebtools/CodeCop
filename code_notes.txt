@@ -1,0 +1,38 @@
+I just thought I would write a few notes on my thoughts in making this.
+
+This application is not meant to be OO, but rather follow a more service-based approach (as per my personal preference).
+
+Code Organization:
+- "/": display code that is specific to this project (all original).
+- "/sys/": logic that is specific to this project (all original except colorCode method).
+- "/sys/custom/": custom code for a rule will be stored here (make sure write permissions are enabled for this folder)
+- "/sys/tags/": pre-existing open-source code for code-creation.
+- "/sys/types/": The code for each rule type. If you wanted to add a new rule type, you would start by adding a CFC here (then change the rule edit form)
+- "/com/": CFCs that I use on many projects (all open source).
+- "/layouts/": layout code.
+	- CFAmin7.cfc: code used by pages in the CF Admin for CF7 and above.
+	- CFAmin6.cfc: code used by pages in the CF Admin for CF6.
+	- Default.cfc: code used by pages outside of the CF Admin.
+	- layout.cfc: the parent layout component to be extended by the others.
+	- All others: modified versions of common layout components.
+- "/lib/": JavaScript and CSS for my custom tags
+- "/sebtags/": my open-source custom tags
+
+The code specific to this application is limited to the root and sys folders.
+
+Guiding principles in my coding:
+1. A thing should be what it seems to be.
+2. Consistency of user experience
+3. Strive for elegant simplicity.
+
+Good Quotes:
+
+"There are two ways of constructing a software design. One way is to make it so simple that there are obviously no deficiencies. And the other way is to make it so complicated that there are no obvious deficiencies." (Charles Hoare)
+
+
+"Treat every problem as if it can be solved with ridiculous simplicity. The time you save on the 98% of problems for which this is true will give you ridiculous resources to apply to the other 2%." - DrPaulMacCready
+
+"Making the simple complex is easy. Making the complex simple, awesomely simple, now THAT is genius." - Charles Mingus
+"Rules of Optimization: Rule 1: Don't do it. Rule 2 (for experts only): Don't do it yet." - M.A. Jackson
+"We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil." - Donald Knuth
+"A complex system that works is invariably found to have evolved from a simple system that worked." John Gall

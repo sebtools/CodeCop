@@ -1,0 +1,4 @@
+<cfabort>
+[Settings]
+datasource=
+database=

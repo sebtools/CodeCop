@@ -1,0 +1,41 @@
+<wddxPacket version='1.0'>
+<header></header>
+<data>
+	<struct>
+		<var name='CONFIG'>
+			<struct>
+				<var name='EMAILFIELDS'>
+					<struct>
+					<var name='ALL'>
+						<string>{[label]:}[value]&lt;br/&gt;&lt;br/&gt; </string>
+					</var>
+					<var name='BUTTONS'><string></string></var>
+					</struct>
+				</var>
+				<var name='EMAILLAYOUT'>
+					<string>[Fields] </string>
+				</var>
+				<var name='ERRORHEADER'>
+					<string>&lt;div class="sebform-error"&gt;&lt;b&gt;We're Sorry. Some information is missing or incomplete:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;ul&gt;[Errors]&lt;/ul&gt;&lt;br/&gt;Please try again.&lt;/div&gt;</string>
+				</var>
+				<var name='ERRORITEM'>
+					<string>&lt;li&gt;[Error]&lt;/li&gt;</string>
+				</var>
+				<var name='FIELDS'>
+					<struct>
+						<var name='ALL'>
+							<string>{[Label][ReqMark]:}[Input][Help]&lt;br&gt;</string>
+						</var>
+					</struct>
+				</var>
+				<var name='LAYOUT'>
+					<string>[ErrorHeader]&lt;form&gt;[Fields]&lt;/form&gt;</string>
+				</var>
+				<var name='REQMARK'>
+					<string>*</string>
+				</var>
+			</struct>
+		</var>
+	</struct>
+</data>
+</wddxPacket>

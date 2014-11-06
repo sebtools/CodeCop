@@ -1,0 +1,318 @@
+/*
+Copyright (c) 2003-04 Macromedia Inc.
+Forms CSS
+$Revision: 1.4 $
+*/
+#pod select, 
+#pod .textfield {
+width: 161px}
+.textfield {
+padding: 2px 0 2px 0.25em;
+border: 1px solid}
+.form-columns .textfield,
+.form-columns select {
+width: 16em}
+.textfield,
+select {
+min-height: 1.8em}
+/*\*/
+* html .textfield {
+height: 1.8em}
+select {
+border: 1px solid}
+/* */
+fieldset {
+border-style: hidden;
+border-width: 0;
+padding: 0;
+margin: 0.5em 0}
+.form-columns div fieldset {
+margin-top: 0}
+.licenseAgreement {
+padding: 1em;
+margin: 1em 0;
+height: 10em;
+min-height: 10em;
+border: 1px solid;
+width: 32em;
+overflow: auto}
+textarea {
+width: 16em;
+border: 1px solid;
+padding-left: 4px;
+margin-bottom: 2px;
+height: 10em;
+min-height: 10em}
+button {
+padding: 1px .5em;
+cursor: pointer;
+vertical-align: middle}
+* html button {
+cursor: hand;
+width/**/:1px;
+overflow: visible;
+padding: 2px .5em;
+/*\*/
+padding: 0 .5em;
+/* */
+}
+input.checkbox {
+margin-right: 4px}
+p input {
+vertical-align: middle}
+input.login-username,
+input.login-password,
+input.serialnumber, 
+input.numeric { 
+border: 1px solid;
+width: 188px !important;
+width: 193px}
+input.login-username,
+input.login-password {  
+padding: 2px 4px 0 4px;
+margin: 0 0 4px 0;
+width: 188px !important;
+width: 193px}
+input.numeric, 
+input.serialnumber {
+padding: 2px 0 2px 4px;
+margin-bottom: 1px}
+input.numeric {
+width: 60px !important;
+width: 56px}
+input.serialnumber {
+margin-left: 0}
+input.formButton {
+border: 0; 
+padding: 0 4px 0 0;
+vertical-align: top}
+input.formSubmitButton {
+border: 0; 
+padding: 0 0 0 8px;
+vertical-align: top}
+input.submit,
+input.submit-disabled {
+margin-left: 4px;
+padding: 1px 0.5em}
+* html input.submit,
+* html input.submit-disabled {
+padding: 2px 0.5em;
+/*\*/padding: 0 0.5em;/* */
+width/**/: 0;
+overflow/**/: visible}
+input.submit {
+cursor: pointer !important;
+cursor: hand}
+a.submit {
+display: block;
+width: 6em;
+padding: 0.2em 0.5em 0.3em;
+margin: 0.25em 0}
+input.gobutton {
+height: 20px;
+width: 20px;
+background: white url(/images/buttons/go_button.gif);
+margin-left: 4px}
+.nav-right input {
+margin-left: 4px !important}
+.cancel { 
+margin-right: 31px !important}
+p select {
+vertical-align: middle}
+* html p select {
+vertical-align: bottom}
+select.multiselect {
+padding-bottom: 16px;
+height: 5em}
+#msg-error img {
+position: relative;
+top: 2px;
+left: 0;
+display: block;
+float: left}
+#msg-error {
+padding: 4px 8px 4px;
+margin-bottom: 1em}
+#msg-error p {
+margin: 3px 0.5em 3px 2em}
+#msg-error ul,
+#msg-error ol { 
+margin-bottom: 0.25em}
+div.error p {
+margin-top: 0.5em;
+margin-bottom: 0}
+.required {
+padding-left: 0.1em}
+html>body .form-columns .required {
+margin-left: -0.8em;
+position: relative;
+top: 0;
+right: -0.8em}
+/*\*/
+* html .form-columns .required {
+margin-right: -8px}
+/* */
+div.resultsListWrapper {
+ overflow: hidden;
+width: 526px !important}
+#searchBarTop,
+#searchBarBottom  {
+padding: 0;
+margin: 5px -15px 16px -16px;
+ vertical-align: top}
+#searchBarTop div.results-summary,
+#searchBarBottom div.results-summary {
+float: left;
+clear: both;
+/*\*/
+clear: none;
+/* */
+padding: 3px 8px 3px 16px}
+#searchBarTop div.prev-next,
+#searchBarBottom div.prev-next {
+float: right;
+clear: right;
+/*\*/
+clear: none; 
+/* */
+padding: 3px 16px 3px 8px;
+text-align: right}
+p.go-button,
+div.go-button {
+margin-top: 0.4em;
+text-align: right}
+form {
+margin: 0;
+padding: 0}
+form.form-columns,
+div.form-columns {
+margin-bottom: 2em; 
+margin-top: 0.5em}
+form.searchUsergroups {
+width: 16em}
+div.form-indent {
+margin: 0.5em 0 0.5em 3em}
+div.form-indent div.columns-2-AB-A,
+div.form-indent div.columns-2-AB-B {
+width: 40%}
+div.formSubmitButtons {
+float: right; 
+clear: both; 
+padding: 32px 0 0 0;
+margin: 0}
+form.form-columns h2.header-border,
+div.form-columns h2.header-border {
+margin-top: 1.5em;
+border-bottom: solid 1px #e6e6dc;
+padding-bottom: 0.5em;
+margin-bottom: 0.9em}
+.input-group {
+margin-bottom: 1.35em}
+.input-group p {
+padding-top: 2px;
+padding-left: 23px;
+margin-bottom: 2px}
+/*\*/
+html>body .input-group input.radio,
+html>body .input-group input.checkbox {
+position: relative;
+top: 0;
+left: -23px;
+width: 13px;
+margin: 0 -23px 0 0}
+#gecko:first-child .input-group input.radio,
+#gecko:first-child .input-group input.checkbox,
+head:first-child+body .input-group input.radio,
+head:first-child+body .input-group input.checkbox {
+margin: 0 -17px 0 0}
+/* */
+* html .input-group p {
+text-indent: -23px}
+* html .input-group input.radio,
+* html .input-group input.checkbox {
+margin-left: 0px;
+margin-right: 2px;
+/*\*/
+margin-top: -0.5em;
+margin-bottom: -0.5em;
+margin-right: 0;
+/* */
+}
+.input-left { 
+padding-left: 18px}
+.input-left p {
+clear: both;
+margin: 0 0 0.5em;
+padding: 3px 0 !important;
+padding: 0}
+.input-left ul { 
+margin-bottom: 0.5em}
+.input-left p input.radio,
+.input-left p input.checkbox {
+float: left;
+padding-top: 0;
+padding-bottom: 0;
+margin-left: -18px}
+.input-left input.textfield {
+width: 170px}
+.input-left input.login-password {
+width: 100px !important;
+padding: 2px 0 2px 4px;
+margin-left: 0;
+margin-bottom: 2px}
+* html>body .input-left {
+padding-left: 2em}
+* html>body .input-left p input.radio,
+* html>body .input-left p input.checkbox {
+padding-top: 2px;
+padding-bottom: 2px;
+margin-left: -1.8em}
+div.label-top {
+padding-bottom: 0.4em}
+p label input,
+p label select {
+vertical-align: middle}
+label.label-top input,
+label.label-top select,
+label.label-top textarea {
+margin-top: 0.4em}
+label.label-left input,
+label.label-left select,
+label.label-left textarea {
+margin-left: 0.3em}
+div.input-left p.label { 
+margin-bottom: 0.15em}
+.label-description {
+display: block;
+padding: 0;
+margin: 0.3em 0}
+* html>body .label-description {
+margin: 0.3em 1px 0.3em 0}
+label.label-description a.helptextlink {
+margin-top: -6px}
+a.narrow {
+width: 4em !important}
+a.wide {
+width: 10em !important}
+a.xwide {
+width: 16.5em !important}
+.narrow {
+width: 13em !important}
+.wide {
+width: 21em !important}
+* html>body .wide {
+width: 20em !important}
+.xwide {
+width: 35em !important}
+.max {
+width: 99% !important}
+* html>body .max {
+width: 97% !important}
+.min {
+width: auto !important}
+.month, .day, .xxnarrow { 
+width: 4em !important}
+.year { 
+width: 5em !important}
+.securecode {
+width: 3em !important}

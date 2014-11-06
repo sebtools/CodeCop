@@ -1,0 +1,40 @@
+Installation Instructions:
+
+You can install CodeCop either in the CF Admin or on its own.
+
+
+
+-Install in ColdFusion Administrator:
+
+1. unzip the file
+2. Copy the CodeCop folder into the ColdFusion administrator folder /CFIDE/administrator/
+3.
+	If extensioncustom.cfm exists in /CFIDE/administrator/
+		Copy the contents of extensioncustom.cfm to the bottom of that file
+	If extensioncustom.cfm does not exist in /CFIDE/administrator/
+		Copy extensioncustom.cfm to /CFIDE/administrator/
+4. Make sure the root CodeCop folder and CodeCop/sys/custom/ are writable (not generally a worry on Windows)
+   (CodeCop saves settings to the config.cfm file in the root - you can optionally set these manually)
+   (CodeCop saves custom code to the CodeCop/sys/custom/ folder. It is essential that this is writable)
+5. Log in to the ColdFusion administrator, go to "Custom Extensions" and click "CodeCop"
+6. Choose a database and hit submit
+   (CodeCop will install itself on the chosen database. All tables have a prefix of "chk", which should prevent naming conflicts)
+   (Database support includes any supported by DataMgr.cfc - view about.cfm for current list)
+   (supported as of this writing: Access,MS SQL,MySQL,PostGreSQL)
+7. Start using CodeCop.
+
+
+
+-Install elsewhere:
+
+1. unzip the file
+2. Copy the CodeCop folder into the desired location
+3. Make sure the root CodeCop folder and CodeCop/sys/custom/ are writable (not generally a worry on Windows)
+   (CodeCop saves settings to the config.cfm file in the root - you can optionally set these manually)
+   (CodeCop saves custom code to the CodeCop/sys/custom/ folder. It is essential that this is writable)
+4. View CodeCop in your browser
+5. Choose a database and hit submit
+   (CodeCop will install itself on the chosen database. All tables have a prefix of "chk", which should prevent naming conflicts)
+   (Database support includes any supported by DataMgr.cfc - view about.cfm for current list)
+   (supported as of this writing: Access,MS SQL,MySQL,PostGreSQL)
+6. Start using CodeCop.

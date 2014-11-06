@@ -1,0 +1,13 @@
+@import url(../calendar/calendar-system.css);
+body {behavior:url(hover.htc)}
+#sebTable th {text-align:left;border-bottom:1px solid black;}
+#sebForm fieldset.checkbox, #sebForm fieldset.radio, #sebForm fieldset.yesno {border:0;padding:0;margin:0;}
+#sebTab td {background-color:black;color:white;font-family:Verdana,Arial,Helvetica;font-size:small;height:22px;}
+#sebTab td.tab {padding-left:4px;padding-right:4px;}
+#sebTab td.clear {background-color:white;color:black;padding-left:0;}
+#sebTab a {color:white;text-decoration:none;}
+#sebTab a.CurrTab {font-weight:bold;}
+#sebTab a:hover {text-decoration:underline;}
+#sebTabMenu a {color:white;font-family:Verdana,Arial,Helvetica;font-size:x-small;font-weight:bold;text-decoration:none;}
+#sebTabMenu a:hover {text-decoration:underline;}
+#sebTabMenu li {list-style-type:circle;}
