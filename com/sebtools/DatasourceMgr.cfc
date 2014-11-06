@@ -1,9 +1,10 @@
-<cfcomponent displayname="Datasource Manager">
+<cfcomponent displayname="Datasource Manager" output="no">
 
 <cffunction name="init" access="public" returntype="any" output="no" hint="I instantiate and return this component.">
+	<cfargument name="DataMgr" type="any" required="no">
 	<cfargument name="Factory" type="any" required="no">
 	
-	<cfset variables.DataMgr = CreateObject("component","com.sebtools.DataMgr").init("")>
+	<cfset variables.DataMgr = arguments.DataMgr>
 	
 	<cfif StructKeyExists(arguments,"Factory")>
 		<cfset variables.Factory = arguments.Factory>
@@ -61,26 +62,30 @@
 	<cfreturn qDatasources>
 </cffunction>
 
-<cffunction name="getDatasources_6" access="private" returntype="query" output="no" hint="I get the available datasources on CFMX prior to CFMX7.">
+<cffunction name="getDatasources_6" access="public" returntype="query" output="no" hint="I get the available datasources on CFMX prior to CFMX7.">
 	
 	<cfset var dsService = CreateObject("java", "coldfusion.server.ServiceFactory").DataSourceService>
-	<cfset var dsManager = dsService.getDman()>
-	<cfset var nameArray = dsManager.getNames()>
-	<cfset var i = 0>
+	<cfset var qDataMgrDatabases = variables.DataMgr.getSupportedDatabases()>
+	<cfset var sDatasources = dsService.getDatasources()>
+	<cfset var qDatasources = QueryNew("name,uname")>
 	<cfset var name = "">
-	<cfset var qDatasources = QueryNew("name,type,nameu")>
-	<cfset var type = "">
 	
-	<cfloop from="1" to="#ArrayLen(nameArray)#" index="i">
-		<cfset name = nameArray[i]>
-		<cfset type = getJdbcUrlDatabase(dsManager.getJdbcUrl(name))>
-		<cfif Len(type)>
-			<cfset QueryAddRow(qDatasources)>
-			<cfset QuerySetCell(qDatasources, "name", name)>
-			<cfset QuerySetCell(qDatasources, "type", type)>
-			<cfset QuerySetCell(qDatasources, "nameu", UCase(name))>
-		</cfif>
+	<cfloop collection="#sDatasources#" item="name">
+		<cfloop query="qDataMgrDatabases">
+			<cfif sDatasources[name].Driver CONTAINS Driver>
+				<cfset QueryAddRow(qDatasources)>
+				<cfset QuerySetCell(qDatasources,"name",name)>
+				<cfset QuerySetCell(qDatasources,"uname",UCase(name))>
+				<cfbreak>
+			</cfif>
+		</cfloop>
 	</cfloop>
+	
+	<cfquery name="qDatasources" dbtype="query">
+	SELECT		name
+	FROM		qDatasources
+	ORDER BY	uname	
+	</cfquery>
 	
 	<cfreturn qDatasources>
 </cffunction>

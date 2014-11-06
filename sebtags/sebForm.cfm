@@ -1,6 +1,6 @@
 <!---
-1.0 RC2 (Build 111)
-Last Updated: 2008-09-04
+1.0 RC4 Dev 1 (Build 113)
+Last Updated: 2008-11-26
 Created by Steve Bryant 2004-06-01
 Information: sebtools.com
 Documentation:
@@ -14,6 +14,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	TagInfo = StructNew();
 	TagInfo.TagName = TagName;
 	TagInfo.liErrFields = "";
+	fieldlist = "sebformsubmit,pkfield,sebForm_forward";
 	TagInfo.arrErrors = ArrayNew(1);
 	TagInfo.liQFormAPI = "allowSubmitOnError,autodetect,errorColor,librarypath,resetOnInit,showStatusMsgs,useErrorColorCoding,validateAll";
 	TagInfo.liQForm = "_allowSubmitOnError,_locked,_showAlerts";
@@ -49,6 +50,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	}
 	
 	//attributes for this form (by id)
+	if ( StructKeyExists(Caller, "sebFormAttributes") ) {
+		StructAppend(attributes, Caller.sebFormAttributes, "no");
+	}
 	if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagInfo.TagName) AND StructKeyExists(request.cftags[TagInfo.TagName],attributes.id) ) {
 		StructAppend(attributes, request.cftags[TagInfo.TagName][attributes.id], "no");
 	}
@@ -123,11 +127,16 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		thisAtt = ListGetAt(TagInfo.liHtmlAtts, i);
 		setDefaultAtt(thisAtt);
 	}
-	setDefaultAtt("action", "#CGI.SCRIPT_NAME#?#CGI.Query_String#");
+	if ( attributes.method EQ "post" ) {
+		setDefaultAtt("action", "#CGI.SCRIPT_NAME#?#CGI.Query_String#");
+	} else {
+		setDefaultAtt("action", "#CGI.SCRIPT_NAME#");
+	} 
 	setDefaultAtt("enctype");
 	setDefaultAtt("target");
 	setDefaultAtt("librarypath","/lib/");
 	setDefaultAtt("skinpath","#attributes.librarypath#skins/");
+	attributes.formname = ReReplaceNoCase(attributes.formname,"[^a-zA-Z]","","ALL");
 	setDefaultAtt("objname","js#attributes.formname#");
 	setDefaultAtt("skin","");
 	setDefaultAtt("format","");
@@ -137,11 +146,13 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	setDefaultAtt("debug",false);
 	setDefaultAtt("UploadFilePath","");
 	setDefaultAtt("UploadBrowserPath","");
+	setDefaultAtt("showReqMarkHint",false);
 	setDefaultAtt("returnvar","sebForm");
 	
 	
 	Caller[attributes.returnvar] = StructNew();
 	Caller[attributes.returnvar].fields = StructNew();
+	Caller[attributes.returnvar].sForm = sForm;
 	
 	/*
 	if ( (Len(attributes.datasource) AND Len(attributes.dbtable)) OR (isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_GetMethod")) OR (isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_Method")) ) {
@@ -220,20 +231,22 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	>
 		<cftry>
 			<cfset sCompMeta = attributes.CFC_Component.getMetaStruct()>
-			<cfif StructKeyExists(sCompMeta,"arg_pk") AND Len(sCompMeta.arg_pk) AND NOT Len(attributes.pkfield)>
-				<cfset attributes.pkfield = sCompMeta.arg_pk>
-			</cfif>
-			<cfif StructKeyExists(sCompMeta,"method_save") AND Len(sCompMeta.method_save) AND NOT isDefined("attributes.CFC_Method")>
-				<cfset attributes.CFC_Method = sCompMeta.method_save>
-			</cfif>
-			<cfif StructKeyExists(sCompMeta,"method_get") AND Len(sCompMeta.method_get) AND NOT isDefined("attributes.CFC_GetMethod")>
-				<cfset attributes.CFC_GetMethod = sCompMeta.method_get>
-			</cfif>
-			<cfif StructKeyExists(sCompMeta,"method_delete") AND Len(sCompMeta.method_delete) AND NOT isDefined("attributes.CFC_DeleteMethod")>
-				<cfset attributes.CFC_DeleteMethod = sCompMeta.method_delete>
-			</cfif>
-			<cfif StructKeyExists(sCompMeta,"catch_types") AND Len(sCompMeta.catch_types) AND NOT ListFindNoCase(attributes.CatchErrTypes,sCompMeta.catch_types)>
-				<cfset attributes.CatchErrTypes = ListAppend(attributes.CatchErrTypes,sCompMeta.catch_types)>
+			<cfif isDefined("sCompMeta") AND isStruct(sCompMeta)>
+				<cfif StructKeyExists(sCompMeta,"arg_pk") AND Len(sCompMeta.arg_pk) AND NOT Len(attributes.pkfield)>
+					<cfset attributes.pkfield = sCompMeta.arg_pk>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"method_save") AND Len(sCompMeta.method_save) AND NOT isDefined("attributes.CFC_Method")>
+					<cfset attributes.CFC_Method = sCompMeta.method_save>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"method_get") AND Len(sCompMeta.method_get) AND NOT isDefined("attributes.CFC_GetMethod")>
+					<cfset attributes.CFC_GetMethod = sCompMeta.method_get>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"method_delete") AND Len(sCompMeta.method_delete) AND NOT isDefined("attributes.CFC_DeleteMethod")>
+					<cfset attributes.CFC_DeleteMethod = sCompMeta.method_delete>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"catch_types") AND Len(sCompMeta.catch_types) AND NOT ListFindNoCase(attributes.CatchErrTypes,sCompMeta.catch_types)>
+					<cfset attributes.CatchErrTypes = ListAppend(attributes.CatchErrTypes,sCompMeta.catch_types)>
+				</cfif>
 			</cfif>
 		<cfcatch>
 		</cfcatch>
@@ -272,10 +285,10 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	<cfsavecontent variable="ThisTag.config.Colon">:</cfsavecontent>
 	<cfif attributes.Format eq "Table">
 		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-table">[ErrorHeader]<form><table border="0" cellspacing="0" cellpadding="3">[Fields]</table></form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><tr><td valign="top" class="label">{[Label][ReqMark][Colon]}</td><td valign="top">[Input]<div class="sebHelp">[Help]</div></td></tr></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><tr id="row-[id]"><td valign="top" class="label">{[Label][ReqMark][Colon]}</td><td valign="top">[Input]<div class="sebHelp">[Help]</div></td></tr></cfsavecontent>
 	<cfelse>
 		<cfsavecontent variable="ThisTag.config.Layout"><cfoutput><div<cfif Len(Trim(attributes.skin))> class=" sebForm-skin-#LCase(attributes.skin)#"</cfif>><div id="sebForm" class="sebFormat-semantic">[ErrorHeader]<form>[Fields]</form></div></div></cfoutput></cfsavecontent>
-		<cfsavecontent variable="ThisTag.config.Fields.all"><div>{[Label][ReqMark][Colon]}[Input]<div class="sebHelp">[Help]</div></div></cfsavecontent>
+		<cfsavecontent variable="ThisTag.config.Fields.all"><div id="div-[id]">{[Label][ReqMark][Colon]}[Input]<div class="sebHelp">[Help]</div></div></cfsavecontent>
 	</cfif>
 	
 	<cfsavecontent variable="ThisTag.config.EmailLayout">[Fields]</cfsavecontent>
@@ -1352,17 +1365,22 @@ if ( isDefined("ThisTag.subforms") ) {
 							} else {
 								ThisFieldOutput = attributes.config["EmailFields"].all;
 							}
-							if ( Len(arrFields[thisField].label) ) {
+							if ( Len(Trim(arrFields[thisField].label)) ) {
 								ThisFieldOutput = ReplaceNoCase(ThisFieldOutput,  "{", "", "ALL");
 								ThisFieldOutput = ReplaceNoCase(ThisFieldOutput,  "}", "", "ALL");
 							} else {
 								ThisFieldOutput = REReplaceNoCase(ThisFieldOutput,"{[^}]*}","","ALL");
 							}
+							ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[id]", arrFields[thisField].id);
 							ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[Label]", arrFields[thisField].label);
 							ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[value]", arrFields[thisField].display);
 							ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[Input]", "");
 							ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[ReqMark]", "");
-							ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[Colon]", ":");
+							if ( Len(Trim(arrFields[thisField].label)) ) {
+								ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[Colon]", ":");
+							} else {
+								ThisFieldOutput = ReplaceNoCase(ThisFieldOutput, "[Colon]", "");
+							}
 							EmailFieldsOutput = EmailFieldsOutput & ThisFieldOutput;
 						}
 						</cfscript>
@@ -1435,7 +1453,8 @@ qFormAPI.include("*");
 </cfif></cfloop></script><!--- Generate any qform API property ---><cfset request.isQformLoaded = true></cfif>
 </cfsavecontent><cfhtmlhead text="#MyHead#"><cfsavecontent variable="ThisTag.output.form"><form name="#attributes.formname#"<cfloop index="thisHtmlAtt" list="#TagInfo.liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.action)> action="#xmlFormat(attributes.action)#"</cfif><cfif Len(attributes.method)> method="#attributes.method#"</cfif><cfif Len(attributes.enctype)> enctype="#attributes.enctype#"</cfif><cfif Len(attributes.target)> target="#attributes.target#"</cfif>><cfif attributes.sendback AND attributes.sendforward>
 <input type="hidden" name="sebForm_forward" value="#CGI.HTTP_REFERER#"/>
-</cfif><input type="hidden" name="sebformsubmit" value="#Hash(attributes.formname)#"/>
+</cfif><input type="hidden" name="sebformsubmit" value="#Hash(attributes.formname)#"/><cfif attributes.method EQ "get"><cfloop list="#CGI.QUERY_STRING#" delimiters="&" index="urlvalpair"><cfif ListLen(urlvalpair,"=") EQ 2 AND NOT ListFindNoCase(fieldlist,ListFirst(urlvalpair,"="))>
+<input type="hidden" name="#ListFirst(urlvalpair,"=")#" value="#ListLast(urlvalpair,"=")#"/></cfif></cfloop></cfif>
 <cfif ListFindNoCase(attributes.qFormData.ColumnList, attributes.pkfield)><input type="hidden" name="pkfield" value="#attributes.qFormData[attributes.pkfield][1]#"/><cfelse><input type="hidden" name="pkfield" value=""/></cfif><cfloop index="thisField" from="1" to="#ArrayLen(arrFields)#" step="1"><cfif arrFields[thisField].type eq "hidden">
 <input type="hidden" name="#arrFields[thisField].fieldname#"<cfif Len(arrFields[thisField].id)> id="#arrFields[thisField].id#"</cfif> value="#arrFields[thisField].value#"/></cfif></cfloop>
 </cfsavecontent></cfoutput>
@@ -1446,8 +1465,9 @@ ThisTag.output.Layout = ReplaceNoCase(ThisTag.output.Layout,  "[Fields]", ThisTa
 ThisTag.GeneratedContent = "";
 wysifields = "";
 </cfscript>
-
-</cfsilent><cfoutput><!--- || DISPLAY OUTPUT || --->#Trim(ThisTag.output.Layout)#
+</cfsilent><cfoutput><!--- || DISPLAY OUTPUT || --->#Trim(ThisTag.output.Layout)#<cfif attributes.showReqMarkHint>
+	<div>#attributes.config.ReqMark# = required</div>
+</cfif>
 <script language="JavaScript" type="text/javascript">
 function seb_addEvent(obj, evType, fn) {if (obj.addEventListener) {obj.addEventListener(evType, fn, true);return true;} else if (obj.attachEvent){var r = obj.attachEvent("on"+evType, fn);return r;} else {return false;}}<cfif hasFileField>
 /* check extensions function */

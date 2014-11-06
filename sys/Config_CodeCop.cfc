@@ -3,8 +3,8 @@
 <cffunction name="init" access="public" returntype="any" output="no" hint="I instantiate and return this component.">
 	
 	<!--- Set the build number for future upgrades --->
-	<cfset variables.Build = 18>
-	<cfset variables.Version = "1.0.1.3">
+	<cfset variables.Build = 20>
+	<cfset variables.Version = "1.0.1.5">
 	
 	<cfreturn this>
 </cffunction>

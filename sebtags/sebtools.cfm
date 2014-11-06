@@ -1,6 +1,6 @@
 <!---
-1.0 RC2 (Build 111)
-Last Updated: 2008-09-04
+1.0 RC4 Dev 1 (Build 113)
+Last Updated: 2008-11-26
 --->
 <cfscript>
 sebtools = StructNew();
@@ -10,6 +10,9 @@ sebtools.skins.carpediem = StructNew();
 sebtools.skins.carpediem.format = "semantic";
 sebtools.skins.carpediem.shape = "bar";
 sebtools.skins.carpediem.menutype = "drop-down";
+
+sebtools.skins.cfadmin = StructNew();
+sebtools.skins.cfadmin.format = "table";
 
 sebtools.skins.deepblue = StructNew();
 sebtools.skins.deepblue.format = "table";

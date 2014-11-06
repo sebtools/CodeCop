@@ -1,5 +1,5 @@
-<!--- 2.2 Alpha 2 Dev 3 (Build 125) --->
-<!--- Last Updated: 2008-02-19 --->
+<!--- 2.2 RC1 Dev1 (Build 144) --->
+<!--- Last Updated: 2008-12-19 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS SQL Server" hint="I manage data interactions with the Derby database. I can be used to handle inserts/updates.">
 
@@ -11,26 +11,51 @@
 	<cfreturn "derby">
 </cffunction>
 
+<cffunction name="getDatabaseDriver" access="public" returntype="string" output="no" hint="I return the string that can be found in the driver or JDBC URL for the database platform being used.">
+	<cfreturn "Apache Derby Embedded">
+</cffunction>
+
+<cffunction name="getDatabaseProperties" access="public" returntype="struct" output="no" hint="I return some properties about this database">
+	
+	<cfset var sProps = StructNew()>
+	
+	<cfset sProps["areSubqueriesSortable"] = false>
+	
+	<cfreturn sProps>
+</cffunction>
+
+<cffunction name="sqlCreateColumn" access="public" returntype="any" output="false" hint="">
+	<cfargument name="field" type="struct" required="yes">
+	
+	<cfset var sField = adjustColumnArgs(arguments.field)>
+	<cfset var type = getDBDataType(sField.CF_DataType)>
+	<cfset var result = "">
+	
+	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# #type#<cfif isStringType(type)>(#sField.Length#)<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND StructKeyExists(sField,"scale") AND StructKeyExists(sField,"precision")>(#Val(sField.precision)#,#Val(sField.scale)#)</cfif><cfif Len(Trim(sField.Default))> DEFAULT #sField.Default#</cfif><cfif sField.PrimaryKey OR NOT sField.AllowNulls> NOT NULL</cfif><cfif sField.Increment> GENERATED ALWAYS AS IDENTITY</cfif></cfoutput></cfsavecontent>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	
-	<cfset var i = 0><!--- generic counter --->
+	<cfset var ii = 0><!--- generic counter --->
 	<cfset var arrFields = getFields(arguments.tablename)><!--- table structure --->
 	<cfset var CreateSQL = ""><!--- holds sql to create table --->
 	<cfset var pkfields = "">
 	<cfset var thisField = "">
 	
 	<!--- Find Primary Key fields --->
-	<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		<cfif arrFields[i].PrimaryKey>
-			<cfset pkfields = ListAppend(pkfields,escape(arrFields[i].ColumnName))>
+	<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		<cfif arrFields[ii].PrimaryKey>
+			<cfset pkfields = ListAppend(pkfields,escape(arrFields[ii].ColumnName))>
 		</cfif>
 	</cfloop>
 	
 	<!--- create sql to create table --->
 	<cfsavecontent variable="CreateSQL"><cfoutput>
-	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		#escape(arrFields[i].ColumnName)# #getDBDataType(arrFields[i].CF_DataType)#<cfif isStringType(getDBDataType(arrFields[i].CF_DataType))>(<cfif StructKeyExists(arrFields[i],"Length") AND isNumeric(arrFields[i].Length) AND arrFields[i].Length gt 0>#arrFields[i].Length#<cfelse>255</cfif>)</cfif><cfif StructKeyExists(arrFields[i],"Default") AND Len(Trim(arrFields[i].Default))> DEFAULT #arrFields[i].Default#</cfif><cfif ListFindNoCase(pkfields,arrFields[i].ColumnName) OR Not arrFields[i].AllowNulls> NOT NULL</cfif><cfif StructKeyExists(arrFields[i],"Increment") AND arrFields[i].Increment> GENERATED ALWAYS AS IDENTITY</cfif><!--- <cfif arrFields[i].PrimaryKey AND arrFields[i].CF_DataType eq "CF_SQL_IDSTAMP"> DEFAULT (newid())</cfif> --->,</cfloop>
+	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		#sqlCreateColumn(arrFields[ii])#,</cfloop>
 		<cfif Len(pkfields)>
 		PRIMARY KEY (#pkfields#)
 		</cfif>

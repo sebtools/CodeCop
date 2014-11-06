@@ -1,6 +1,6 @@
 <!---
-1.0 RC2 (Build 111)
-Last Updated: 2008-09-04
+1.0 RC4 Dev 1 (Build 113)
+Last Updated: 2008-11-26
 Created by Steve Bryant 2004-06-01
 Information: sebtools.com
 Documentation:
@@ -16,6 +16,12 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 	<cfset ParentAtts = request.cftags[ParentTag].attributes>
 	<cfset sfx = ParentAtts.suffix>
 	<cfscript>
+	if ( StructKeyExists(attributes,"dbfield") AND StructKeyExists(Caller, "sebColumns") AND StructKeyExists(Callers.sebColumns,attributes.dbfield) ) {
+		StructAppend(attributes, Caller.sebColumns[attributes.dbfield], "no");
+	}
+	if ( StructKeyExists(Caller, "sebColumnAttributes") ) {
+		StructAppend(attributes, Caller["sebColumnAttributes"], "no");
+	}
 	if ( StructKeyExists(attributes,"dbfield") AND StructKeyExists(ParentAtts,"sColumns") AND isStruct(ParentAtts.sColumns) AND StructKeyExists(ParentAtts.sColumns,attributes.dbfield) AND isStruct(ParentAtts.sColumns[attributes.dbfield]) ) {
 		for (att in ParentAtts.sColumns[attributes.dbfield]) {
 			if ( NOT StructKeyExists(attributes,att) ) {
@@ -35,7 +41,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 	}
 	</cfscript>
 	<cfset attributes.ParentAtts = ParentAtts>
-	<cfset ColumnTypes = "text,numeric,date,datetime,yesno,icon,checkbox,radio,input,select,sorter,delete,submit,link,money,html">
+	<cfset ColumnTypes = "text,numeric,date,datetime,time,yesno,icon,checkbox,radio,input,select,sorter,delete,submit,link,money,html">
 	<cfset dbcolumns = "text,date,yesno,icon,money">
 	<cfparam name="attributes.name" default="">
 	<cfparam name="attributes.DataType" default="text"><!--- text,date,yesno,icon,checkbox,input,select,delete --->
@@ -63,6 +69,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 	<cfswitch expression="#attributes.type#">
 		<cfcase value="date"><cfparam name="attributes.mask" default="m/dd/yyyy"></cfcase>
 		<cfcase value="datetime"><cfparam name="attributes.mask" default="m/dd/yyyy; h:mm:ss tt"></cfcase>
+		<cfcase value="time"><cfparam name="attributes.mask" default="h:mm:ss tt"></cfcase>
 		<cfdefaultcase><cfparam name="attributes.mask" default=""></cfdefaultcase>
 	</cfswitch>
 	<cfparam name="attributes.rolodex" default="false" type="boolean">
@@ -177,6 +184,17 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 			<cfscript>
 			function display_numeric(value,rownum,pkid,atts) {
 				return '<div style="float:right;">#value#</div>';
+			}
+			</cfscript>
+		</cfcase>
+		<cfcase value="time">
+			<cfscript>
+			function display_time(value,rownum,pkid,atts) {
+				var result = value;
+				if ( isDate(result) OR isNumericDate(result) ) {
+					result = TimeFormat(value,ListLast(atts.mask,";"));
+				}
+				return result;
 			}
 			</cfscript>
 		</cfcase>
@@ -392,6 +410,10 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 							<cfset link = ReplaceNoCase(link, "[#col#]", qTableData[col][rownum], "ALL")>
 						</cfif>
 					</cfloop>
+				</cfif>
+				
+				<cfif StructKeyExists(atts,"text") AND Len(atts.text) AND NOT Len(value)>
+					<cfset value = atts.text>
 				</cfif>
 				
 				<cfsavecontent variable="result"><cfoutput><a href="#link#"<cfloop index="linkatt" list="#linkatts#"><cfif StructKeyExists(atts,linkatt)> #linkatt#="#atts[linkatt]#"</cfif></cfloop>>#value#</a></cfoutput></cfsavecontent>

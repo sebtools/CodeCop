@@ -1,5 +1,5 @@
-<!--- 2.2 Alpha 2 Dev 3 (Build 125) --->
-<!--- Last Updated: 2008-02-19 --->
+<!--- 2.2 RC1 Dev1 (Build 144) --->
+<!--- Last Updated: 2008-12-19 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS Access" hint="I manage data interactions with the MS Access database. I can be used to handle inserts/updates.">
 
@@ -11,9 +11,25 @@
 	<cfreturn "Access">
 </cffunction>
 
+<cffunction name="getDatabaseDriver" access="public" returntype="string" output="no" hint="I return the string that can be found in the driver or JDBC URL for the database platform being used.">
+	<cfreturn "MSAccessJet">
+</cffunction>
+
+<cffunction name="sqlCreateColumn" access="public" returntype="any" output="false" hint="">
+	<cfargument name="field" type="struct" required="yes">
+	
+	<cfset var sField = adjustColumnArgs(arguments.field)>
+	<cfset var type = getDBDataType(sField.CF_DataType)>
+	<cfset var result = "">
+	
+	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# <cfif sField.Increment>COUNTER<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric"><!---  AND StructKeyExists(sField,"scale") AND sField.scale GT 0 ---> float<cfelse>#getDBDataType(sField.CF_DataType)#</cfif><cfif isStringType(type)>(#sField.Length#)</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="addColumn" access="public" returntype="any" output="no" hint="I add a column to the given table">
 	<cfargument name="tablename" type="string" required="yes" hint="The name of the table to which a column will be added.">
-	<cfargument name="columnname" type="string" required="yes" hint="The name of the column to add.">
+	<cfargument name="ColumnName" type="string" required="yes" hint="The name of the column to add.">
 	<cfargument name="CF_Datatype" type="string" required="yes" hint="The ColdFusion SQL Datatype of the column.">
 	<cfargument name="Length" type="numeric" default="50" hint="The ColdFusion SQL Datatype of the column.">
 	<cfargument name="Default" type="string" required="no" hint="The default value for the column.">
@@ -22,12 +38,7 @@
 	<cfset var sql = "">
 	<cfset var FailedSQL = "">
 	
-	<!--- Don't allow zero length (return to default) --->
-	<cfif arguments.Length eq 0>
-		<cfset arguments.Length = 50>
-	</cfif>
-	
-	<cfsavecontent variable="sql"><cfoutput>ALTER TABLE #escape(arguments.tablename)# ADD #escape(arguments.columnname)# #type#<cfif isStringType(type)> (#arguments.Length#)</cfif></cfoutput></cfsavecontent>
+	<cfsavecontent variable="sql"><cfoutput>ALTER TABLE #escape(arguments.tablename)# ADD #sqlCreateColumn(arguments)#</cfoutput></cfsavecontent>
 	
 	<cftry>
 		<cfset runSQL(sql)>
@@ -48,7 +59,7 @@
 	</cfif>
 	
 	<cfif Len(FailedSQL)>
-		<cfthrow message="Failed to add Column (""#arguments.columnname#"")." type="DataMgr" detail="#FailedSQL#">
+		<cfthrow message="Failed to add Column (""#arguments.ColumnName#"")." type="DataMgr" detail="#FailedSQL#">
 	</cfif>
 	
 </cffunction>
@@ -56,27 +67,27 @@
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes" hint="The name of the table to create.">
 	
-	<cfset var i = 0><!--- generic counter --->
+	<cfset var ii = 0><!--- generic counter --->
 	<cfset var arrFields = getFields(arguments.tablename)><!--- structure of table --->
 	<cfset var CreateSQL = ""><!--- holds sql used for creation, allows us to return it in an error --->
 	<cfset var pkfields = ""><!--- primary key fields --->
 	<cfset var thisField = ""><!--- current field holder --->
 	
 	<!--- Find Primary Key fields --->
-	<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		<cfif arrFields[i].PrimaryKey>
-			<cfset pkfields = ListAppend(pkfields,arrFields[i].ColumnName)>
+	<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		<cfif arrFields[ii].PrimaryKey>
+			<cfset pkfields = ListAppend(pkfields,arrFields[ii].ColumnName)>
 		</cfif>
 	</cfloop>
 	
 	<!--- create the sql to create the table --->
 	<cfsavecontent variable="CreateSQL"><cfoutput>
-	CREATE TABLE #arguments.tablename# (<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		#escape(arrFields[i].ColumnName)# <cfif StructKeyExists(arrFields[i],"Increment") AND arrFields[i].Increment>COUNTER<cfelse>#getDBDataType(arrFields[i].CF_DataType)#</cfif><cfif isStringType(getDBDataType(arrFields[i].CF_DataType))>(<cfif StructKeyExists(arrFields[i],"Length") AND isNumeric(arrFields[i].Length) AND arrFields[i].Length gt 0>#arrFields[i].Length#<cfelse>255</cfif>)</cfif> <cfif ListFindNoCase(pkfields,arrFields[i].ColumnName) OR Not arrFields[i].AllowNulls>NOT </cfif>NULL<cfif i lt ArrayLen(arrFields)> ,</cfif></cfloop>
+	CREATE TABLE #arguments.tablename# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		#sqlCreateColumn(arrFields[ii])#<cfif ii LT ArrayLen(arrFields)> ,</cfif></cfloop>
 		<cfif Len(pkfields)>,
 		CONSTRAINT [PK_#tablename#] PRIMARY KEY 
-		(<cfloop index="i" from="1" to="#ListLen(pkfields)#" step="1"><cfset thisField = ListGetAt(pkfields,i)>
-			#thisField#<cfif i lt ListLen(pkfields)>,</cfif></cfloop>
+		(<cfloop index="ii" from="1" to="#ListLen(pkfields)#" step="1"><cfset thisField = ListGetAt(pkfields,ii)>
+			#thisField#<cfif ii lt ListLen(pkfields)>,</cfif></cfloop>
 		)
 		</cfif>
 	)<!--- <cfif Len(pkfields)> ON [PRIMARY]</cfif> --->
@@ -169,18 +180,18 @@
 
 	<cfset var qTables = 0>
 	
-	<!--- <cftry> --->
-		<cfset qTables = runSQL("SELECT Name AS TableName FROM MSysObjects WHERE Type = 1 AND Flags = 0")>
-		<!--- <cfcatch>
+	<cftry>
+		<cfset qTables = runSQL("SELECT Name FROM MSysObjects WHERE Type = 1 AND Flags = 0")>
+		<cfcatch>
 			<cfif cfcatch.detail CONTAINS "no read permission">
 				<cfthrow message="Your Access database doesn't have appropriate permissions to use tables without loading them via loadXML()." type="DataMgr" detail="In order to allow this method, open your database using MS Access and check the 'System objects' box under Tools/Options/View. You may also need to make sure 'Read Data' is checked for every table in Tools/Security/User and Group Permissions.">
 			<cfelse>
 				<cfrethrow>
 			</cfif>
 		</cfcatch>
-	</cftry> --->
+	</cftry>
 	
-	<cfreturn ValueList(qTables.TableName)>
+	<cfreturn ValueList(qTables.Name)>
 </cffunction>
 
 <cffunction name="getDBTableStruct" access="public" returntype="array" output="no" hint="I return the structure of the given table in the database.">
@@ -392,6 +403,15 @@
 	</cfif>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="seedIndex" access="private" returntype="void" output="no" hint="No way to get index meta data from MS Access, so I do nothin.">
+	<cfargument name="indexname" type="string" required="yes">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="fields" type="string" required="yes">
+	<cfargument name="unique" type="boolean" default="false">
+	<cfargument name="clustered" type="boolean" default="false">
+	
 </cffunction>
 
 </cfcomponent>

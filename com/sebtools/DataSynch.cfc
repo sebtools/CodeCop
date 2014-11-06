@@ -1,5 +1,5 @@
-<!--- 0.2 Development1 Build 3 --->
-<!--- Last Updated: 2007-08-30 --->
+<!--- 0.2 Development2 Build 4 --->
+<!--- Last Updated: 2008-12-09 --->
 <!--- Created by Steve Bryant 2006-09-18 --->
 <cfcomponent displayname="Data Synchronizer">
 
@@ -24,6 +24,9 @@
 <cffunction name="getXml" access="public" returntype="string" output="no" hint="I get the XML for the given tables.">
 	<cfargument name="tables" type="string" default="">
 	<cfargument name="withdata" type="boolean" default="true">
+	<cfargument name="indexes" type="boolean" default="false">
+	<cfargument name="regex" type="string" required="no">
+	<cfargument name="relatedata" type="boolean" default="true">
 	
 	<cfset var TableData = variables.DataMgr.getTableData()>
 	<cfset var i = 0>
@@ -41,6 +44,13 @@
 	<!--- If no tables are indicated, get them all. --->
 	<cfif NOT Len(arguments.tables)>
 		<cfset arguments.tables = StructKeyList(TableData)>
+		<cfif NOT Len(arguments.tables)>
+			<cfset arguments.tables = variables.DataMgr.getDatabaseTables()>
+		</cfif>
+	</cfif>
+	
+	<cfif StructKeyExists(arguments,"regex")>
+		<cfset arguments.tables = filterTables(arguments.tables,arguments.regex)>
 	</cfif>
 	
 	<!--- Make sure all requested tables are loaded in DataMgr --->
@@ -54,18 +64,20 @@
 	<!--- Look for foreign keys --->
 	<cfloop index="table" list="#arguments.tables#">
 		<cfset sDependencies[table] = "">
-		<cfloop index="i" from="1" to="#ArrayLen(TableData[table])#" step="1"><cfset column = TableData[table][i]>
-			<cfif StructKeyExists(column,"CF_DataType")><cfset col = column.ColumnName>
-				<cfset rtable = getRelatedTable(arguments.tables,table,column)>
-				<cfif Len(rtable)>
-					<cfset TableData[table][i]["rtable"] = rtable>
-					<!--- Make sure rtable is in depencies list --->
-					<cfif NOT ListFindNoCase(sDependencies[table],rtable)>
-						<cfset sDependencies[table] = ListAppend(sDependencies[table],rtable)>
+		<cfif arguments.relatedata>
+			<cfloop index="i" from="1" to="#ArrayLen(TableData[table])#" step="1"><cfset column = TableData[table][i]>
+				<cfif StructKeyExists(column,"CF_DataType")><cfset col = column.ColumnName>
+					<cfset rtable = getRelatedTable(arguments.tables,table,column)>
+					<cfif Len(rtable)>
+						<cfset TableData[table][i]["rtable"] = rtable>
+						<!--- Make sure rtable is in depencies list --->
+						<cfif NOT ListFindNoCase(sDependencies[table],rtable)>
+							<cfset sDependencies[table] = ListAppend(sDependencies[table],rtable)>
+						</cfif>
 					</cfif>
 				</cfif>
-			</cfif>
-		</cfloop>
+			</cfloop>
+		</cfif>
 	</cfloop>
 	
 	<cfscript>
@@ -88,7 +100,7 @@
 	arguments.tables = sortedtablelist;
 	</cfscript>
 	
-	<cfif jj GTE ( ListLen(arguments.tables) * ListLen(arguments.tables) )>
+	<cfif jj GT 1 AND jj GTE ( ListLen(arguments.tables) * ListLen(arguments.tables) )>
 		<cfthrow message="DataSynch encountered a bidirectional dependency that it was unable to resolve: Each of two tables were both dependent on each other (#fromtablelist#)." type="DataSynch" errorcode="CrossDependency">
 	</cfif>
 	
@@ -98,14 +110,7 @@
 	<!--- Verifying the table exists (shouldn't really be needed since we made sure to check for it above --->
 	<cfif StructKeyExists(TableData,table)>
 		<!--- Create the table --->
-		<table name="#table#">
-		<!--- Indicate all of the fields --->
-		<cfloop index="i" from="1" to="#ArrayLen(TableData[table])#" step="1"><cfset column = TableData[table][i]>
-			<cfif StructKeyExists(column,"CF_DataType")>
-				<field ColumnName="#column.ColumnName#" CF_DataType="#column.CF_DataType#"<cfif StructKeyExists(column,"PrimaryKey") AND isBoolean(column.PrimaryKey) AND column.PrimaryKey> PrimaryKey="true"</cfif><cfif StructKeyExists(column,"Increment") AND isBoolean(column.Increment) AND column.Increment> Increment="true"</cfif><cfif StructKeyExists(column,"Length") AND isNumeric(column.Length) AND column.Length gt 0> Length="#Int(column.Length)#"</cfif><cfif StructKeyExists(column,"Default") AND Len(column.Default)> Default="#column.Default#"</cfif><cfif StructKeyExists(column,"Precision") AND isNumeric(column["Precision"])> Precision="#column["Precision"]#"</cfif><cfif StructKeyExists(column,"Scale") AND isNumeric(column["Scale"])> Scale="#column["Scale"]#"</cfif><cfif StructKeyExists(column,"Special") AND Len(column["Special"])> Special="#column["Special"]#"</cfif> />
-			</cfif>
-		</cfloop>
-		</table>
+		#variables.DataMgr.getXml(tablename=table,indexes=arguments.indexes,showroot=false)#
 	</cfif>
 </cfloop>
 <cfloop index="table" list="#arguments.tables#">
@@ -156,9 +161,10 @@
 <cffunction name="synchTables" access="public" returntype="void" output="no" hint="I synchronize the given tables.">
 	<cfargument name="tables" type="string" default="">
 	<cfargument name="withdata" type="boolean" default="true">
+	<cfargument name="regex" type="string" required="no">
 	
 	<cfset var i = 0>
-	<cfset var dbxml = getXml(arguments.tables,arguments.withdata)>
+	<cfset var dbxml = getXml(argumentcollection=arguments)>
 	
 	<cfloop index="i" from="1" to="#ArrayLen(variables.aReceivers)#" step="1">
 		<cfset variables.aReceivers[i].loadXml(dbxml,true,true)>
@@ -176,6 +182,24 @@
 	</cfloop>
 	
 </cffunction>
+
+
+<cffunction name="filterTables" access="public" returntype="string" output="false" hint="">
+	<cfargument name="tables" type="string" required="yes">
+	<cfargument name="regex" type="string" required="yes">
+	
+	<cfset var result = "">
+	<cfset var table = "">
+	
+	<cfloop list="#arguments.tables#" index="table">
+		<cfif ReFindNoCase(arguments.regex,table)>
+			<cfset result = ListAppend(result,table)>
+		</cfif>
+	</cfloop>
+	
+	<cfreturn result>
+</cffunction>
+
 
 <cffunction name="getRelatedTable" access="private" returntype="string" output="no">
 	<cfargument name="tables" type="string" default="">

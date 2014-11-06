@@ -1,6 +1,6 @@
 <!---
-1.0 RC2 (Build 111)
-Last Updated: 2008-09-04
+1.0 RC4 Dev 1 (Build 113)
+Last Updated: 2008-11-26
 Created by Steve Bryant 2004-06-01
 Information: sebtools.com
 ---><cfsilent>
@@ -14,6 +14,7 @@ Information: sebtools.com
 <cfparam name="attributes.help" type="string" default="">
 <cfset htmlatts = "id,style">
 
+<!--- HTML attributes --->
 <cfset atts = "">
 <cfloop list="#htmlatts#" index="att">
 	<cfif StructKeyExists(attributes,att)>
@@ -21,10 +22,31 @@ Information: sebtools.com
 	</cfif>
 </cfloop>
 
+<!--- Get parent attributes --->
 <cfif ListFindNoCase(GetBaseTagList(), ParentTag)>
 	<cfset ParentAtts = request.cftags.cf_sebForm.attributes>
 <cfelse>
 	<cfset ParentAtts = StructNew()>
+</cfif>
+
+<!--- If a component is passed in, try to get field information from it. --->
+<cfif
+		isDefined("attributes.CFC_Component")
+	AND (
+				StructKeyExists(attributes.CFC_Component,"getFieldsStruct")
+			OR	getMetaData(attributes.CFC_Component).extends.name EQ "_framework.PageController"
+			OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Master"
+		)
+>
+	<cftry>
+		<cfset StructAppend(ParentAtts.sFields,attributes.CFC_Component.getFieldsStruct(transformer="sebField"),"no")>
+		<!--- If component has getFieldStruct, make sure to catch "Master" errors --->
+		<cfif NOT ListFindNoCase(attributes.CatchErrTypes,"Master")>
+			<cfset ParentAtts.CatchErrTypes = ListAppend(ParentAtts.CatchErrTypes,"Master")>
+		</cfif>
+	<cfcatch>
+	</cfcatch>
+	</cftry>
 </cfif>
 
 <cfif attributes.type NEQ "hr" AND NOT ThisTag.HasEndTag>

@@ -2,6 +2,7 @@
 <cfparam name="attributes.height" type="numeric" default="700">
 <cfparam name="attributes.toolbarset" type="string" default="seb">
 <cfparam name="attributes.EditorAreaCSS" type="string" default="">
+<cfparam name="attributes.StylesXmlPath" type="string" default="">
 <cfscript>
 if ( NOT Len(attributes.urlpath) ) {
 	attributes.urlpath = "/f/fckeditor/";
@@ -30,7 +31,8 @@ function loadFckEditor() {
 	oFCKeditor.Config.LinkUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&editorpath=' + oFCKeditor.BasePath ;
 	oFCKeditor.Config.ImageUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Image&editorpath=' + oFCKeditor.BasePath ;
 	oFCKeditor.Config.FlashUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Flash&editorpath=' + oFCKeditor.BasePath ;
-	<cfif Len(Trim(attributes.EditorAreaCSS))>oFCKeditor.EditorAreaCSS = '#attributes.EditorAreaCSS#';</cfif>
+	<cfif Len(Trim(attributes.EditorAreaCSS))>oFCKeditor.Config.EditorAreaCSS = '#attributes.EditorAreaCSS#';</cfif>
+	<cfif Len(Trim(attributes.StylesXmlPath))>oFCKeditor.Config.StylesXmlPath = '#attributes.StylesXmlPath#';</cfif>
 	<cfif Len(Trim(attributes.toolbarset))>oFCKeditor.ToolbarSet = '#attributes.toolbarset#';</cfif>
 	oFCKeditor.Width = '#attributes.width#';
 	oFCKeditor.Height = '#attributes.height#';

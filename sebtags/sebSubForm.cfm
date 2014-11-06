@@ -1,6 +1,6 @@
 <!---
-1.0 RC2 (Build 111)
-Last Updated: 2008-09-04
+1.0 RC4 Dev 1 (Build 113)
+Last Updated: 2008-11-26
 Created by Steve Bryant 2004-06-01
 Information: sebtools.com
 Documentation:

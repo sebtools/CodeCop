@@ -2,6 +2,7 @@
 <cfsetting showdebugoutput="NO">
 
 <cfinclude template="_logic/settings.cfm">
+<cfset request.CCrootpath = GetDirectoryFromPath(GetCurrentTemplatePath())>
 <cfset UploadPath = ExpandPath("sys/custom/")><!--- Get the upload path --->
 
 
@@ -24,12 +25,12 @@ In CF7+, this gives us variables.Factory which includes the Admin API (so we can
 	<!--- So that I can use the cfapplication from the CF Admin without worrying about stomping all over variables that other programs might need. --->
 	<cfset Application["CodeCop"] = StructNew()>
 	<cfset Application["CodeCop"].InstallSQL = "">
-	<cfset Application["CodeCop"].ConfigSite = CreateObject("component","com.sebtools.Config").init(CGI,GetDirectoryFromPath(GetCurrentTemplatePath()))>
+	<cfset Application["CodeCop"].ConfigSite = CreateObject("component","com.sebtools.Config").init(CGI,request.CCrootpath)>
 	<cfset Application["CodeCop"].ConfigApp = CreateObject("component","sys.Config_CodeCop").init()>
 	
 	<cfset TempDataMgr = CreateObject("component","com.sebtools.DataMgr").init("")>
 	<!--- Load up the datasource manager component to get datasources and determine associated databases --->
-	<cfinvoke returnvariable="Application.CodeCop.DatasourceMgr" component="sys.DatasourceMgr" method="init">
+	<cfinvoke returnvariable="Application.CodeCop.DatasourceMgr" component="com.sebtools.DatasourceMgr" method="init">
 		<cfinvokeargument name="DataMgr" value="#TempDataMgr#">
 		<cfif StructKeyExists(variables,"Factory")>
 			<cfinvokeargument name="Factory" value="#variables.Factory#">
@@ -48,13 +49,13 @@ In CF7+, this gives us variables.Factory which includes the Admin API (so we can
 	<!--- In CF8 admin, create datasource and menu option --->
 	<cfif CFVersionMajor GTE 8 AND isInAdmin>
 		<!--- In CF8, if no datasource is set, create a Derby datasource --->
-		<cfif NOT Len(SettingsData.datasource)>
+		<!--- <cfif NOT Len(SettingsData.datasource)>
 			<cfset ds = createObject("component","cfide.adminAPI.datasource")>
 			<cfset DerbyCFC = CreateObject("component","sys.derbyCFC").init(ds=ds)>
 			<cfset DerbyCFC.createIfNotExists(name="CodeCop",enable_clob=1,enable_blob=1)>
 			<cfset Application.CodeCop.SettingsMgr.saveSettings(datasource="CodeCop",database="Derby")>
 			<cfset SettingsData = Application["CodeCop"].SettingsMgr.getSettings()><!--- Get settings data --->
-		</cfif>
+		</cfif> --->
 		<cfset addAdminMenu()>
 		<cfset request.CodeCop_LoadAdminMenu = true>
 	</cfif>

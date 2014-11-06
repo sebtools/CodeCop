@@ -1,5 +1,5 @@
-<!--- 2.2 Alpha 2 Dev 3 (Build 125) --->
-<!--- Last Updated: 2008-02-19 --->
+<!--- 2.2 RC1 Dev1 (Build 144) --->
+<!--- Last Updated: 2008-12-19 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS SQL Server" hint="I manage data interactions with the MS SQL Server database. I can be used to handle inserts/updates.">
 
@@ -11,31 +11,47 @@
 	<cfreturn "sqlserver">
 </cffunction>
 
+<cffunction name="getDatabaseDriver" access="public" returntype="string" output="no" hint="I return the string that can be found in the driver or JDBC URL for the database platform being used.">
+	<cfreturn "MSSQLServer">
+</cffunction>
+
+<cffunction name="sqlCreateColumn" access="public" returntype="any" output="false" hint="">
+	<cfargument name="field" type="struct" required="yes">
+	
+	<cfset var sField = adjustColumnArgs(arguments.field)>
+	<cfset var type = getDBDataType(sField.CF_DataType)>
+	<cfset var result = "">
+	
+	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# #type#<cfif isStringType(type)> (#sField.Length#)<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND StructKeyExists(sField,"scale") AND StructKeyExists(sField,"precision")>(#Val(sField.precision)#,#Val(sField.scale)#)</cfif><cfif sField.Increment> IDENTITY (1, 1)</cfif><cfif Len(Trim(sField.Default))> DEFAULT #sField.Default#<cfelseif sField.PrimaryKey AND sField.CF_DataType EQ "CF_SQL_IDSTAMP"> DEFAULT (newid())</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	
-	<cfset var i = 0><!--- generic counter --->
+	<cfset var ii = 0><!--- generic counter --->
 	<cfset var arrFields = getFields(arguments.tablename)><!--- table structure --->
 	<cfset var CreateSQL = ""><!--- holds sql to create table --->
 	<cfset var pkfields = "">
 	<cfset var thisField = "">
 	
 	<!--- Find Primary Key fields --->
-	<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		<cfif arrFields[i].PrimaryKey>
-			<cfset pkfields = ListAppend(pkfields,arrFields[i].ColumnName)>
+	<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		<cfif arrFields[ii].PrimaryKey>
+			<cfset pkfields = ListAppend(pkfields,arrFields[ii].ColumnName)>
 		</cfif>
 	</cfloop>
 	
 	<!--- create sql to create table --->
 	<cfsavecontent variable="CreateSQL"><cfoutput>
 	<!--- IF NOT EXISTS(SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '#arguments.tablename#') --->
-		CREATE TABLE #escape(arguments.tablename)# (<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-			#escape(arrFields[i].ColumnName)# #getDBDataType(arrFields[i].CF_DataType)#<cfif isStringType(getDBDataType(arrFields[i].CF_DataType))> (<cfif StructKeyExists(arrFields[i],"Length") AND isNumeric(arrFields[i].Length) AND arrFields[i].Length gt 0>#arrFields[i].Length#<cfelse>255</cfif>)</cfif><cfif StructKeyExists(arrFields[i],"Increment") AND arrFields[i].Increment> IDENTITY (1, 1)</cfif><cfif StructKeyExists(arrFields[i],"Default") AND Len(Trim(arrFields[i].Default))> DEFAULT #arrFields[i].Default#</cfif> <cfif ListFindNoCase(pkfields,arrFields[i].ColumnName) OR Not arrFields[i].AllowNulls>NOT </cfif>NULL<cfif arrFields[i].PrimaryKey AND arrFields[i].CF_DataType eq "CF_SQL_IDSTAMP"> DEFAULT (newid())</cfif>,</cfloop>
+		CREATE TABLE #escape(arguments.tablename)# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+			#sqlCreateColumn(arrFields[ii])#,</cfloop>
 			<cfif Len(pkfields)>
 			CONSTRAINT [PK_#tablename#] PRIMARY KEY CLUSTERED 
-			(<cfloop index="i" from="1" to="#ListLen(pkfields)#" step="1"><cfset thisField = ListGetAt(pkfields,i)>
-				#thisField#<cfif i lt ListLen(pkfields)>,</cfif></cfloop>
+			(<cfloop index="ii" from="1" to="#ListLen(pkfields)#" step="1"><cfset thisField = ListGetAt(pkfields,ii)>
+				#thisField#<cfif ii LT ListLen(pkfields)>,</cfif></cfloop>
 			)  ON [PRIMARY]
 			</cfif>
 		)<cfif Len(pkfields)> ON [PRIMARY]</cfif>
@@ -54,7 +70,7 @@
 	
 	<cfloop index="colname" list="#arguments.fields#">
 		<cfif Len(result)>
-			<cfset result =  "#result# + '#arguments.delimeter#' + CAST(#colname# AS varchar)">
+			<cfset result =  "#result# + '#arguments.delimeter#' + CAST(#colname# AS varchar(500))">
 		<cfelse>
 			<cfset result = "CAST(#colname# AS varchar(500))">
 		</cfif>
@@ -83,11 +99,11 @@
 			<cfset ArrayAppend(aSQL," + '#arguments.delimeter#' + ")>
 		</cfif>
 		<cfif isSimpleValue(fieldSQL)>
-			<cfset ArrayAppend(aSQL,"ISNULL(CAST(#fieldSQL# AS varchar),'')")>
+			<cfset ArrayAppend(aSQL,"ISNULL(CAST(#fieldSQL# AS varchar(500)),'')")>
 		<cfelse>
 			<cfset ArrayAppend(aSQL,"ISNULL(CAST(")>
 			<cfset ArrayAppend(aSQL,fieldSQL)>
-			<cfset ArrayAppend(aSQL," AS varchar),'')")>
+			<cfset ArrayAppend(aSQL," AS varchar(500)),'')")>
 		</cfif>
 	</cfloop>
 	
@@ -321,6 +337,57 @@
 	<cfreturn true>
 </cffunction>
 
+<cffunction name="getDBTableIndexes" access="public" returntype="query" output="false" hint="">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="indexname" type="string" required="no">
+	
+	<cfset var sql = "">
+	<cfset var fields = "">
+	<cfset var qRawIndexes = 0>
+	<cfset var qIndexes = QueryNew("tablename,indexname,fields,unique,clustered")>
+	
+	<cfsavecontent variable="sql"><cfoutput>
+	SELECT		object_name(i.id) AS table_name,
+				col_name(i.id, ik.colid) AS column_name,
+				i.name AS index_name,
+				indexproperty(i.id, i.name, 'IsClustered') AS isclustered,
+				ik.keyno AS index_order,
+				INDEXPROPERTY( i.id , i.name , 'IsUnique' ) AS isunique
+	FROM		sysindexes i
+	JOIN		sysindexkeys ik
+		ON		i.id = ik.id
+		AND		i.indid = ik.indid
+	WHERE		i.indid BETWEEN 1 AND 254
+		AND 	indexproperty(i.id, name, 'IsHypothetical') = 0
+		AND 	indexproperty(i.id, name, 'IsStatistics') = 0
+		AND 	indexproperty(i.id, name, 'IsAutoStatistics') = 0
+		AND 	objectproperty(i.id, 'IsMsShipped') = 0
+		AND		object_name(i.id) = '#arguments.tablename#'
+		<cfif StructKeyExists(arguments,"indexname")>
+		AND 	i.name = '#arguments.indexname#'
+		</cfif>
+		AND		NOT i.name LIKE 'PK_%'
+	ORDER BY	table_name, i.id, ik.colid, isclustered DESC, ik.keyno
+	</cfoutput></cfsavecontent>
+	
+	<cfset qRawIndexes = runSQL(sql)>
+	
+	<cfoutput query="qRawIndexes" group="index_name">
+		<cfset fields = "">
+		<cfset QueryAddRow(qIndexes)>
+		<cfset QuerySetCell(qIndexes,"tablename",table_name)>
+		<cfset QuerySetCell(qIndexes,"indexname",index_name)>
+		<cfset QuerySetCell(qIndexes,"unique",isunique)>
+		<cfset QuerySetCell(qIndexes,"clustered",isclustered)>
+		<cfoutput>
+			<cfset fields = ListAppend(fields,column_name)>
+		</cfoutput>
+		<cfset QuerySetCell(qIndexes,"fields",fields)>
+	</cfoutput>
+	
+	<cfreturn qIndexes>
+</cffunction>
+
 <cffunction name="getInsertedIdentity" access="private" returntype="string" output="no" hint="I get the value of the identity field that was just inserted into the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="identfield" type="string" required="yes">
@@ -331,6 +398,24 @@
 	<cfset qCheckKey = runSQL("SELECT	IDENT_CURRENT ('#arguments.tablename#') AS NewID")>
 	
 	<cfset result = qCheckKey.NewID>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="hasIndex" access="private" returntype="boolean" output="false" hint="">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="indexname" type="string" required="yes">
+	
+	<cfset var result = false>
+	<cfset var qIndexes = RunSQL("
+	SELECT	1
+	FROM	sysindexes
+	WHERE	name = '#arguments.indexname#'
+	")>
+	
+	<cfif qIndexes.RecordCount>
+		<cfset result = true>
+	</cfif>
 	
 	<cfreturn result>
 </cffunction>

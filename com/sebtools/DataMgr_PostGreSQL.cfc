@@ -1,5 +1,5 @@
-<!--- 2.2 Alpha 2 Dev 3 (Build 125) --->
-<!--- Last Updated: 2008-02-19 --->
+<!--- 2.2 RC1 Dev1 (Build 144) --->
+<!--- Last Updated: 2008-12-19 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for PostGreSQL" hint="I manage data interactions with the PostGreSQL database. I can be used to handle inserts/updates.">
 
@@ -11,29 +11,42 @@
 	<cfreturn "postgre">
 </cffunction>
 
+<cffunction name="getDatabaseDriver" access="public" returntype="string" output="no" hint="I return the string that can be found in the driver or JDBC URL for the database platform being used.">
+	<cfreturn "PostgreSQL">
+</cffunction>
+
+<cffunction name="sqlCreateColumn" access="public" returntype="any" output="false" hint="">
+	<cfargument name="field" type="struct" required="yes">
+	
+	<cfset var sField = adjustColumnArgs(arguments.field)>
+	<cfset var type = getDBDataType(sField.CF_DataType)>
+	<cfset var result = "">
+	
+	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)#<cfif StructKeyExists(sField,"Increment") AND sField.Increment> SERIAL<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND sField.scale GT 0> float<cfelse> #getDBDataType(sField.CF_DataType)#<cfif isStringType(getDBDataType(sField.CF_DataType))> (<cfif StructKeyExists(sField,"Length") AND isNumeric(sField.Length) AND sField.Length gt 0>#sField.Length#<cfelse>255</cfif>)<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND StructKeyExists(sField,"scale") AND StructKeyExists(sField,"precision")>(<cfif Val(sField.precision) EQ 0>5<cfelse>#Val(sField.precision)#</cfif>,#Val(sField.scale)#)</cfif></cfif><cfif StructKeyExists(sField,"Default") AND Len(Trim(sField.Default))> DEFAULT #sField.Default#</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	
-	<cfset var i = 0>
+	<cfset var ii = 0>
 	<cfset var arrFields = getFields(arguments.tablename)>
 	<cfset var CreateSQL = "">
 	<cfset var pkfields = "">
 	<cfset var thisField = "">
 	
-	<!--- <cfdump var="#arrFields#">
-	<cfabort> --->
-	
 	<!--- Find Primary Key fields --->
-	<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		<cfif arrFields[i].PrimaryKey>
-			<cfset pkfields = ListAppend(pkfields,escape(arrFields[i].ColumnName))>
+	<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		<cfif arrFields[ii].PrimaryKey>
+			<cfset pkfields = ListAppend(pkfields,escape(arrFields[ii].ColumnName))>
 		</cfif>
 	</cfloop>
 	
 	<cfsavecontent variable="CreateSQL"><cfoutput>
-	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		#escape(arrFields[i].ColumnName)#<cfif StructKeyExists(arrFields[i],"Increment") AND arrFields[i].Increment> SERIAL<cfelse> #getDBDataType(arrFields[i].CF_DataType)#<cfif isStringType(getDBDataType(arrFields[i].CF_DataType))> (<cfif StructKeyExists(arrFields[i],"Length") AND isNumeric(arrFields[i].Length) AND arrFields[i].Length gt 0>#arrFields[i].Length#<cfelse>255</cfif>)</cfif></cfif><cfif StructKeyExists(arrFields[i],"Default") AND Len(Trim(arrFields[i].Default))> DEFAULT #arrFields[i].Default#</cfif> <cfif ListFindNoCase(pkfields,arrFields[i].ColumnName) OR NOT arrFields[i].AllowNulls OR arrFields[i].PrimaryKey>NOT </cfif>NULL,</cfloop>
-		PRIMARY KEY (#pkfields#)
+	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		#sqlCreateColumn(arrFields[ii])#<cfif ii LT ArrayLen(arrFields) OR Len(pkfields)>,</cfif></cfloop>
+		<cfif Len(pkfields)>PRIMARY KEY (#pkfields#)</cfif>
 	)
 	</cfoutput></cfsavecontent>
 	
@@ -96,7 +109,7 @@
 	<cfset var item = "">
 	
 	<cfloop index="item" list="#arguments.name#" delimiters=".">
-		<cfset result = ListAppend(result,"#chr(34)##item##chr(34)#",".")>
+		<cfset result = ListAppend(result,"#chr(34)##LCase(item)##chr(34)#",".")>
 	</cfloop>
 	
 	<cfreturn result>
@@ -104,7 +117,7 @@
 
 <cffunction name="getDatabaseTables" access="public" returntype="string" output="yes" hint="I get a list of all tables in the current database.">
 
-	<cfset var qTables = runSQL("SELECT tablename FROM pg_tables WHERE tableowner = current_user")>
+	<cfset var qTables = runSQL("SELECT tablename FROM pg_tables WHERE tableowner = current_user AND schemaname = 'public'")>
 	
 	<cfreturn ValueList(qTables.tablename)>
 </cffunction>
@@ -113,7 +126,7 @@
 	<cfargument name="tablename" type="string" required="yes">
 	
 	<cfscript>
-	var qTable = runSQL("SELECT tablename FROM pg_tables WHERE tableowner = current_user AND tablename = '#arguments.tablename#'");
+	var qTable = runSQL("SELECT tablename FROM pg_tables WHERE tableowner = current_user AND tablename = '#LCase(arguments.tablename)#'");
 	var qFields = 0;
 	var qPrimaryKeys = 0;
 	var qSequences = 0;
@@ -147,7 +160,7 @@
 	<cfset ArrayAppend(sqlarray,"	ON		c.oid = d.adrelid")>
 	<cfset ArrayAppend(sqlarray,"		AND	d.adnum = a.attnum")>
 	<cfset ArrayAppend(sqlarray,"WHERE		a.attnum > 0")>
-	<cfset ArrayAppend(sqlarray,"	AND		c.relname = 'cmsPages'")>
+	<cfset ArrayAppend(sqlarray,"	AND		c.relname = '#LCase(arguments.tablename)#'")>
 	<cfset ArrayAppend(sqlarray,"ORDER BY	a.attnum")>
 	<cfset qFields = runSQLArray(sqlarray)>
 	
@@ -157,7 +170,7 @@
 	<cfset ArrayAppend(sqlarray,"JOIN	pg_class")>
 	<cfset ArrayAppend(sqlarray,"	ON	pg_class.oid=conrelid")>
 	<cfset ArrayAppend(sqlarray,"WHERE	contype='p'")>
-	<cfset ArrayAppend(sqlarray,"	AND	relname = '#arguments.tablename#'")>
+	<cfset ArrayAppend(sqlarray,"	AND	relname = '#LCase(arguments.tablename)#'")>
 	<cfset qPrimaryKeys = runSQLArray(sqlarray)>
 	
 	<cfset PrimaryKeys = ValueList(qPrimaryKeys.conkey)>
@@ -166,11 +179,11 @@
 	<cfset ArrayAppend(sqlarray,"SELECT	relname")>
 	<cfset ArrayAppend(sqlarray,"FROM	pg_class")>
 	<cfset ArrayAppend(sqlarray,"WHERE	relkind = 'S'")>
-	<cfset ArrayAppend(sqlarray,"	AND	relname LIKE '#arguments.tablename#%'")>
+	<cfset ArrayAppend(sqlarray,"	AND	relname LIKE '#LCase(arguments.tablename)#%'")>
 	<cfset qSequences = runSQLArray(sqlarray)>
 	
 	<cfoutput query="qSequences">
-		<cfset Sequences = ListAppend(Sequences,ReplaceNoCase(ReplaceNoCase(relname, "#arguments.tablename#_", ""), "_seq", "") )>
+		<cfset Sequences = ListAppend(Sequences,ReplaceNoCase(ReplaceNoCase(relname, "#LCase(arguments.tablename)#_", ""), "_seq", "") )>
 	</cfoutput>
 	
 
@@ -301,6 +314,49 @@
 	<cfreturn true>
 </cffunction>
 
+<cffunction name="getDBTableIndexes" access="public" returntype="query" output="false" hint="">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="indexname" type="string" required="no">
+	
+	<cfset var sql = "">
+	<cfset var qIndexes = 0>
+	
+	<cfsavecontent variable="sql"><cfoutput>
+	SELECT		(
+					SELECT	relname
+					FROM	pg_class tables
+					WHERE	oid = pg_index.indrelid
+				) AS table_name,
+				pg_class.relname AS index_name,
+				indisclustered AS isclustered,
+				--indkey,
+				attname AS column_name
+	FROM		pg_class
+	INNER JOIN	pg_index
+		ON		pg_class.oid = pg_index.indexrelid
+	INNER JOIN	pg_attribute a
+		ON	a.attnum = ANY(indkey)
+		AND	a.attrelid = pg_index.indrelid
+	WHERE		1 = 1
+		AND		pg_class.oid IN (
+					SELECT		indexrelid
+					FROM		pg_index,
+							pg_class
+					WHERE		1 = 1
+						AND		pg_class.relname = '#LCase(arguments.tablename)#'
+						AND		pg_class.oid=pg_index.indrelid
+						--AND	indisunique != 't'
+						AND		indisprimary != 't'
+				)
+		<cfif StructKeyExists(arguments,"indexname")>
+		AND		pg_class.relname = '#arguments.indexname#'
+		</cfif>
+	</cfoutput></cfsavecontent>
+	<cfset qIndexes = runSQL(sql)>
+	
+	<cfreturn qIndexes>
+</cffunction>
+
 <cffunction name="getFieldSQL_Has" access="private" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="field" type="string" required="yes">
@@ -368,6 +424,33 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="hasIndex" access="private" returntype="boolean" output="false" hint="">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="indexname" type="string" required="yes">
+	
+	<cfset var result = false>
+	<cfset var qIndexes = RunSQL("
+	SELECT	1
+	FROM	pg_class
+	WHERE	oid IN (
+			SELECT		indexrelid
+			FROM		pg_index,
+						pg_class
+			WHERE		1 = 1
+				AND		pg_class.relname = '#arguments.indexname#'
+				AND		pg_class.oid=pg_index.indrelid
+				AND		indisunique != 't'
+				AND		indisprimary != 't'
+		)
+	")>
+	
+	<cfif qIndexes.RecordCount>
+		<cfset result = true>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="isStringType" access="private" returntype="boolean" output="no" hint="I indicate if the given datatype is valid for string data.">
 	<cfargument name="type" type="string">
 
@@ -398,7 +481,7 @@
 	<cfreturn result>
 </cffunction> --->
 
-<cffunction name="getBooleanSqlValue" access="private" returntype="string" output="no">
+<cffunction name="getBooleanSqlValue" access="public" returntype="string" output="no">
 	<cfargument name="value" type="string" required="yes">
 	
 	<cfset var result = "NULL">

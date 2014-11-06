@@ -1,5 +1,5 @@
-<!--- 2.2 Alpha 2 Dev 3 (Build 125) --->
-<!--- Last Updated: 2008-02-19 --->
+<!--- 2.2 RC1 Dev1 (Build 144) --->
+<!--- Last Updated: 2008-12-19 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MySQL" hint="I manage data interactions with the MySQL database. I can be used to handle inserts/updates.">
 
@@ -11,27 +11,43 @@
 	<cfreturn "mysql">
 </cffunction>
 
+<cffunction name="getDatabaseDriver" access="public" returntype="string" output="no" hint="I return the string that can be found in the driver or JDBC URL for the database platform being used.">
+	<cfreturn "MySQL">
+</cffunction>
+
+<cffunction name="sqlCreateColumn" access="public" returntype="any" output="false" hint="">
+	<cfargument name="field" type="struct" required="yes">
+	
+	<cfset var sField = adjustColumnArgs(arguments.field)>
+	<cfset var type = getDBDataType(sField.CF_DataType)>
+	<cfset var result = "">
+	
+	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# #type#<cfif isStringType(type)>(#sField.Length#)<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND StructKeyExists(sField,"scale") AND StructKeyExists(sField,"precision")>(#Val(sField.precision)#,#Val(sField.scale)#)</cfif><cfif sField.Increment> AUTO_INCREMENT</cfif><cfif Len(Trim(sField.Default))> DEFAULT #sField.Default#</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	
-	<cfset var i = 0><!--- generic counter --->
+	<cfset var ii = 0><!--- generic counter --->
 	<cfset var arrFields = getFields(arguments.tablename)><!--- table structure --->
 	<cfset var CreateSQL = ""><!--- sql to create table --->
 	<cfset var pkfields = "">
 	<cfset var thisField = "">
 	
 	<!--- Find Primary Key fields --->
-	<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		<cfif arrFields[i].PrimaryKey>
-			<cfset pkfields = ListAppend(pkfields,arrFields[i].ColumnName)>
+	<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		<cfif arrFields[ii].PrimaryKey>
+			<cfset pkfields = ListAppend(pkfields,arrFields[ii].ColumnName)>
 		</cfif>
 	</cfloop>
 	
 	<!--- Create sql to create table --->
 	<cfsavecontent variable="CreateSQL"><cfoutput>
-	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="i" from="1" to="#ArrayLen(arrFields)#" step="1">
-		#escape(arrFields[i].ColumnName)# #getDBDataType(arrFields[i].CF_DataType)#<cfif isStringType(getDBDataType(arrFields[i].CF_DataType))> (<cfif StructKeyExists(arrFields[i],"Length") AND isNumeric(arrFields[i].Length) AND arrFields[i].Length gt 0>#arrFields[i].Length#<cfelse>255</cfif>)</cfif><cfif StructKeyExists(arrFields[i],"Increment") AND arrFields[i].Increment> AUTO_INCREMENT</cfif><cfif StructKeyExists(arrFields[i],"Default") AND Len(Trim(arrFields[i].Default))> DEFAULT #arrFields[i].Default#</cfif> <cfif ListFindNoCase(pkfields,arrFields[i].ColumnName) OR Not arrFields[i].AllowNulls>NOT </cfif>NULL ,</cfloop>
-		primary key (#pkfields#)
+	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+		#sqlCreateColumn(arrFields[ii])#<cfif ii LT ArrayLen(arrFields) OR Len(pkfields)>,</cfif></cfloop>
+		<cfif Len(pkfields)>primary key (#pkfields#)</cfif>
 	)
 	</cfoutput></cfsavecontent>
 	
@@ -187,7 +203,7 @@
 		<cfcase value="binary,image,sql_variant,sysname,varbinary"><cfset result = ""></cfcase>
 		<cfcase value="bit"><cfset result = "CF_SQL_BIT"></cfcase>
 		<cfcase value="char"><cfset result = "CF_SQL_CHAR"></cfcase>
-		<cfcase value="datetime"><cfset result = "CF_SQL_DATE"></cfcase>
+		<cfcase value="date,datetime"><cfset result = "CF_SQL_DATE"></cfcase>
 		<cfcase value="decimal"><cfset result = "CF_SQL_DECIMAL"></cfcase>
 		<cfcase value="double"><cfset result = "CF_SQL_DOUBLE"></cfcase>
 		<cfcase value="float"><cfset result = "CF_SQL_FLOAT"></cfcase>
@@ -203,8 +219,9 @@
 		<cfcase value="smallint"><cfset result = "CF_SQL_SMALLINT"></cfcase>
 		<cfcase value="smallmoney"><cfset result = "CF_SQL_MONEY4"></cfcase>
 		<cfcase value="text"><cfset result = "CF_SQL_LONGVARCHAR"></cfcase>
+		<cfcase value="longtext"><cfset result = "CF_SQL_LONGVARCHAR"></cfcase>
 		<cfcase value="timestamp"><cfset result = "CF_SQL_TIMESTAMP"></cfcase>
-		<cfcase value="tinyint"><cfset result = "CF_SQL_TINYINT"></cfcase>
+		<cfcase value="tinyint"><cfset result = "CF_SQL_BIT"></cfcase>
 		<cfcase value="uniqueidentifier"><cfset result = "CF_SQL_IDSTAMP"></cfcase>
 		<cfcase value="varchar"><cfset result = "CF_SQL_VARCHAR"></cfcase>
 		<cfdefaultcase><cfset result = "UNKNOWN"></cfdefaultcase>
@@ -220,7 +237,7 @@
 	
 	<cfswitch expression="#arguments.CF_Datatype#">
 		<cfcase value="CF_SQL_BIGINT"><cfset result = "bigint"></cfcase>
-		<cfcase value="CF_SQL_BIT"><cfset result = "bit"></cfcase>
+		<cfcase value="CF_SQL_BIT"><cfset result = "tinyint"></cfcase>
 		<cfcase value="CF_SQL_CHAR"><cfset result = "char"></cfcase>
 		<cfcase value="CF_SQL_DATE"><cfset result = "datetime"></cfcase>
 		<cfcase value="CF_SQL_DECIMAL"><cfset result = "decimal"></cfcase>
@@ -335,6 +352,48 @@
 	
 	<cfif fparens1 AND fparens2>
 		<cfset result = Mid(arguments.type,fparens1+1,fparens2-(fparens1+1))>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getDBTableIndexes" access="public" returntype="query" output="false" hint="">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="indexname" type="string" required="no">
+	
+	<cfset var fields = "">
+	<cfset var qRawIndexes = 0>
+	<cfset var qIndexes = QueryNew("tablename,indexname,fields,unique,clustered")>
+	
+	<cfset qRawIndexes = runSQL("show index from #escape(arguments.tablename)#")>
+	
+	<cfoutput query="qRawIndexes" group="key_name">
+		<cfif ( NOT StructKeyExists(arguments,"indexname") ) OR key_name EQ arguments.indexname>
+			<cfset fields = "">
+			<cfset QueryAddRow(qIndexes)>
+			<cfset QuerySetCell(qIndexes,"tablename",Table)>
+			<cfset QuerySetCell(qIndexes,"indexname",key_name)>
+			<cfset QuerySetCell(qIndexes,"unique","#NOT non_unique#")>
+			<cfset QuerySetCell(qIndexes,"clustered",false)>
+			<cfoutput>
+				<cfset fields = ListAppend(fields,column_name)>
+			</cfoutput>
+			<cfset QuerySetCell(qIndexes,"fields",fields)>
+		</cfif>
+	</cfoutput>
+	
+	<cfreturn qIndexes>
+</cffunction>
+
+<cffunction name="hasIndex" access="private" returntype="boolean" output="false" hint="">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="indexname" type="string" required="yes">
+	
+	<cfset var result = false>
+	<cfset var qIndexes = RunSQL("show index from #escape(arguments.tablename)#")>
+	
+	<cfif qIndexes.RecordCount AND ListFindNoCase(ValueList(qIndexes.key_name),arguments.indexname)>
+		<cfset result = true>
 	</cfif>
 	
 	<cfreturn result>

@@ -21,6 +21,7 @@
 	forward="review-view.cfm?id={result}"
 	CFC_Component="#CodeCop#"
 	CFC_Method="runReview"
+	CatchErrTypes="CodeCop"
 	>
 	<seb:sebField fieldname="Folder" required="true" Length="250" size="75">
 	<!--- Only show browse server in cfadmin of CF7 (security and use of undocumented variable) --->

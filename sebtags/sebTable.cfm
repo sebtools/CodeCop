@@ -1,6 +1,6 @@
 <!---
-1.0 RC2 (Build 111)
-Last Updated: 2008-09-04
+1.0 RC4 Dev 1 (Build 113)
+Last Updated: 2008-11-26
 Created by Steve Bryant 2004-06-01
 Information: sebtools.com
 Documentation:
@@ -9,6 +9,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 <cfset TagName = "cf_sebTable">
 <cfif ThisTag.ExecutionMode eq "Start">
 	<cfscript>
+	if ( StructKeyExists(Caller, "sebTableAttributes") ) {
+		StructAppend(attributes, Caller["sebTableAttributes"], "no");
+	}
 	if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "sebtags") ) {
 		StructAppend(attributes, request.cftags["sebtags"], "no");
 	}
@@ -456,7 +459,7 @@ request.cftags[TagName].attributes = attributes;
 		<cfif Len(url["sebsort#sfx#"])>
 			<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 				<cfif url["sebsort#sfx#"] EQ ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield) AND ThisTag.qColumns[i].type NEQ "Date">
-					<cfif NOT ListFindNoCase(qTableData.ColumnList,"#ThisTag.qColumns[i].sortfield#_UCase")>
+					<cfif ListFindNoCase(qTableData.ColumnList,ThisTag.qColumns[i].sortfield) AND NOT ListFindNoCase(qTableData.ColumnList,"#ThisTag.qColumns[i].sortfield#_UCase")>
 						<cfset aSortVals = ArrayNew(1)>
 						<cfloop query="qTableData">
 							<!--- <cfif isDate(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow]) OR isNumeric(qTableData[ThisTag.qColumns[i].sortfield][CurrentRow])>
@@ -490,11 +493,11 @@ request.cftags[TagName].attributes = attributes;
 			</cfif>
 			<cfif Len(url["sebsort#sfx#"])><cfset sortcount = 0>
 				<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
-					<cfif url["sebsort#sfx#"] eq ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield)>
-					<cfif sortcount>,<cfelse>ORDER BY</cfif>	#ThisTag.qColumns[i].sortfield#<cfif ThisTag.qColumns[i].type NEQ "Date">_UCase</cfif><cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
+					<cfif url["sebsort#sfx#"] EQ ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield) AND ListFindNoCase(qTableData.ColumnList,ThisTag.qColumns[i].sortfield)>
+					<cfif sortcount>,<cfelse>ORDER BY</cfif>	[#ThisTag.qColumns[i].sortfield#<cfif ThisTag.qColumns[i].type NEQ "Date">_UCase</cfif>]<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
 					</cfif>
 				</cfloop>
-			<cfelseif Len(attributes.orderby)>
+			<cfelseif Len(attributes.orderby) AND ListFindNoCase(qTableData.ColumnList,ListFirst(attributes.orderby," "))>
 			ORDER BY	#attributes.orderby#
 			</cfif>
 			</cfquery>
@@ -542,7 +545,7 @@ request.cftags[TagName].attributes = attributes;
 				<cfif Len(url["sebsort#sfx#"])><cfset sortcount = 0>
 					<cfloop index="i" from="1" to="#ArrayLen(ThisTag.qColumns)#" step="1">
 						<cfif url["sebsort#sfx#"] eq ThisTag.qColumns[i].label AND Len(ThisTag.qColumns[i].sortfield)>
-						<cfif sortcount>,<cfelse>ORDER BY</cfif>	#ThisTag.qColumns[i].sortfield#_UCase<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
+						<cfif sortcount>,<cfelse>ORDER BY</cfif>	[#ThisTag.qColumns[i].sortfield#_UCase]<cfif url["sebsortorder#sfx#"] eq "DESC"> DESC</cfif><cfset sortcount = sortcount + 1>
 						</cfif>
 					</cfloop>
 				<cfelseif Len(attributes.orderby)>

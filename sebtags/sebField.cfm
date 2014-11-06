@@ -1,6 +1,6 @@
 <!---
-1.0 RC2 (Build 111)
-Last Updated: 2008-09-04
+1.0 RC4 Dev 1 (Build 113)
+Last Updated: 2008-11-26
 Created by Steve Bryant 2004-06-01
 Information: sebtools.com
 Documentation:
@@ -25,13 +25,13 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	liHtmlAtts = "class,style,title,size,tabindex,onFocus,onBlur,onSelect,onChange,onClick,onDblClick,onMouseDown,onMouseUp,onMouseOver,onMouseMove,onMouseOut,onKeyPress,onKeyDown,onKeyUp";
 	liNoNameNeeded	= "button,cancel,reset,submit,delete,subdelete,submit/cancel,submit/cancel/delete,plaintext,custom1";
 	liButtonTypes	= "button,cancel,reset,submit,delete,subdelete,submit/cancel,submit/cancel/delete";
-	liSubFieldTypes = "select,checkbox,radio";
+	liSubFieldTypes = "select,checkbox,radio,options";
 	//liValidTypes = "hidden,cancel,checkbox,date,jtdate,datestamp,delete,file,password,radio,reset,select,submit,text,textarea,paragraph,memo,yesno,yes/no,YES/NO RADIO,custom2";
 	request.liButtonTypes = liButtonTypes;
 	
 	ThisTag.atts = StructNew();
 	ThisTag.atts.fieldname = "";
-	ThisTag.atts.type = "text";
+	ThisTag.atts.type = "";
 	ThisTag.atts.id = "";
 	ThisTag.atts.length = "";
 	ThisTag.atts.dbfield = "";
@@ -48,6 +48,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	ThisTag.atts.nameconflict = "ERROR";
 	ThisTag.atts.mode = "644";
 	ThisTag.atts.showFile = true;
+	ThisTag.atts.showImage = true;
 	ThisTag.atts.cols = 40;
 	ThisTag.atts.rows = 8;
 	ThisTag.atts.wrap = "";
@@ -65,11 +66,13 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	ThisTag.atts.subarray = "";
 	ThisTag.atts.subvalues = "";
 	ThisTag.atts.subdisplays = "";
+	ThisTag.atts.subtitles = "";
 	ThisTag.atts.reltable = "";
 	ThisTag.atts.relquery = "";
 	ThisTag.atts.fktype = "";
 	ThisTag.atts.fkdatatype = "";
 	ThisTag.atts.topopt = "";
+	ThisTag.atts.topoptvalue = "";
 	ThisTag.atts.addlink = "";
 	ThisTag.atts.deletable = "";
 	ThisTag.atts.folder = "";
@@ -82,10 +85,18 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	/* Default attributes from parent */
 	if ( StructKeyExists(attributes,"fieldname") AND StructKeyExists(ParentAtts,"sFields") AND isStruct(ParentAtts.sFields) AND StructKeyExists(ParentAtts.sFields,attributes.fieldname) AND isStruct(ParentAtts.sFields[attributes.fieldname]) ) {
 		for (att in ParentAtts.sFields[attributes.fieldname]) {
-			ThisTag.atts[att] = ParentAtts.sFields[attributes.fieldname][att];
+			if ( NOT ( StructKeyExists(attributes,"type") AND attributes.type EQ "select" AND att EQ "size" ) ) {
+				ThisTag.atts[att] = ParentAtts.sFields[attributes.fieldname][att];
+			}
 		}
 	}	
 	
+	if ( StructKeyExists(attributes,"fieldname") AND StructKeyExists(Caller, "sebFields") AND StructKeyExists(Callers.sebFields,attributes.fieldname) ) {
+		StructAppend(attributes, Caller.sebFields[attributes.fieldname], "no");
+	}
+	if ( StructKeyExists(Caller, "sebFieldAttributess") ) {
+		StructAppend(attributes, Callers.sebFieldAttributess, "no");
+	}
 	if ( StructKeyExists(attributes,"fieldname") AND StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagName) AND StructKeyExists(request.cftags[TagName],attributes.fieldname) ) {
 		StructAppend(attributes, request.cftags[TagName][attributes.fieldname], "no");
 	}
@@ -96,11 +107,6 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		StructAppend(attributes, request.cftags["sebtags"], "no");
 	}
 	
-	if ( isDefined("attributes.type") AND ListFindNoCase(liNoNameNeeded, attributes.type) ) {
-		liReqAtts = "";
-	} else {
-		liReqAtts = "fieldname";
-	}
 	for (i=1; i lte ListLen(liHtmlAtts); i=i+1 ) {
 		if ( NOT StructKeyExists(ThisTag.atts,ListGetAt(liHtmlAtts, i)) ) {
 			ThisTag.atts[ListGetAt(liHtmlAtts, i)] = "";
@@ -109,6 +115,27 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 
 	//Copy atts back to standard attributes scope
 	StructAppend(attributes, ThisTag.atts, "no");
+	
+	//If no type is provided, attempt to determine one
+	if ( NOT Len(Trim(attributes.type)) ) {
+		if ( Len(Trim(attributes.subvalues)) ) {
+			attributes.type = "options";
+		} else {
+			attributes.type = "text";
+		}
+	}
+	if ( isDefined("attributes.type") AND ListFindNoCase(liNoNameNeeded, attributes.type) ) {
+		liReqAtts = "";
+	} else {
+		liReqAtts = "fieldname";
+	}
+	
+	if ( StructKeyExists(attributes,"type") AND StructKeyExists(Caller, "sebFieldTypes") AND StructKeyExists(Callers.sebFieldTypes,attributes.type) ) {
+		StructAppend(attributes, Caller.sebFieldTypes[attributes.type], "no");
+	}
+	if ( StructKeyExists(attributes,"type") AND StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagName) AND StructKeyExists(request.cftags[TagName],attributes.type) ) {
+		StructAppend(attributes, request.cftags[TagName][attributes.type], "no");
+	}
 	
 	//Use "name" for fieldname
 	if ( StructKeyExists(attributes,"name") AND Len(attributes.name) AND NOT Len(attributes.fieldname) ) {
@@ -122,7 +149,15 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	}
 	if ( isDefined("attributes.type") AND attributes.type EQ "money" ) {
 		attributes.type = "text";
-		attributes.stripregex = "[^\d]";
+		attributes.stripregex = "[^\d\.]";
+		function fMask(str) {
+			result = arguments.str;
+			if ( isNumeric(result) ) {
+				result = "$#DecimalFormat(str)#"; 
+			}
+			return result;
+		}
+		attributes.fMask = fMask;
 	}
 	if ( isDefined("attributes.type") AND ListFindNoCase(StructKeyList(ParentAtts.validations),attributes.type) ) {
 		attributes.regex = ParentAtts.validations[attributes.type];
@@ -284,16 +319,22 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		}
 	}
 	
+	if ( StructKeyExists(attributes,"class") AND Len(attributes.class) ) {
+		attributes.class = "#attributes.class# #attributes.type#";
+	} else {
+		attributes.class = "#attributes.type#";
+	}
 	if ( ListFindNoCase(LiErrFields,attributes.fieldname) ) {
-		if ( StructKeyExists(attributes,"class") AND Len(attributes.class) ) {
-			attributes.class = "#attributes.class# err";
-		} else {
-			attributes.class = "err";
-		}
+		attributes.class = "#attributes.class# err";
+	}
+	if ( isDefined("attributes.fMask") AND isCustomFunction(attributes.fMask) ) {
+		attributes.value = attributes.fMask(attributes.value);
 	}
 
 	attributes.display = attributes.value;
 	attributes.GeneratedContent = "";
+	
+	ParentData["fieldlist"] = ListAppend(ParentData["fieldlist"],attributes.fieldname);
 	</cfscript><!--- Make sure not to update a password field if is unchanged (based on Hash) --->
 	
 	<cfif ListFindNoCase(liSubFieldTypes, attributes.type) AND NOT isDefined("ThisTag.qSubFields")>
@@ -337,6 +378,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				} else {
 					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].display = qSubQuery[attributes.subdisplays][CurrentRow];
 				}
+				if ( Len(attributes.subtitles) ) {
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].title = qSubQuery[attributes.subtitles][CurrentRow];
+				}
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
 				/*
 				if ( ListFindNoCase(attributes.value, qSubQuery[attributes.subvalues][CurrentRow]) ) {
@@ -349,7 +393,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				</cfscript>
 			</cfloop>
 		<cfelseif Len(attributes.subtable)>
-			<cfquery name="qsubtable" datasource="#ParentAtts.datasource#">SELECT #attributes.subvalues# AS subvalue<cfif attributes.subvalues neq attributes.subdisplays>, #attributes.subdisplays# AS subdisplay</cfif> FROM #attributes.subtable# ORDER BY #attributes.subdisplays#</cfquery>
+			<cfquery name="qsubtable" datasource="#ParentAtts.datasource#">SELECT #attributes.subvalues# AS subvalue<cfif attributes.subvalues neq attributes.subdisplays>, #attributes.subdisplays# AS subdisplay</cfif><cfif Len(Trim(attributes.subtitles))>, #attributes.subtitles# AS subtitle</cfif> FROM #attributes.subtable# ORDER BY #attributes.subdisplays#</cfquery>
 			<cfloop query="qsubtable">
 			<cfscript>
 			ArrayAppend(ThisTag.qSubFields,StructNew());
@@ -358,6 +402,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].display = qsubtable["subvalue"][CurrentRow];
 			} else {
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].display = qsubtable["subdisplay"][CurrentRow];
+			}
+			if ( Len(attributes.subtitles) ) {
+				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].title = qsubtable["subtitle"][CurrentRow];
 			}
 			ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
 			/*
@@ -393,6 +440,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				<cfset arrayAppend(ThisTag.qSubFields, structNew()) />
 				<cfset ThisTag.qSubFields[arrayLen(ThisTag.qSubFields)].value = attributes.subarray[i][attributes.subvalues] />
 				<cfset ThisTag.qSubFields[arrayLen(ThisTag.qSubFields)].display = attributes.subarray[i][attributes.subdisplays] />
+				<cfif Len(attributes.subtitles)>
+					<cfset ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].title = attributes.subarray[i][attributes.subtitles]>
+				</cfif>
 				<cfset ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false />
 			</cfloop>
 		<cfelseif Len(attributes.subvalues)>
@@ -404,6 +454,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 				ArrayAppend(ThisTag.qSubFields,StructNew());
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].value = ListGetAt(attributes.subvalues,i);
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].display = ListGetAt(attributes.subdisplays,i);
+				if ( Len(attributes.subtitles) ) {
+					ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].title = ListGetAt(attributes.subtitles,i);
+				}
 				ThisTag.qSubFields[ArrayLen(ThisTag.qSubFields)].checked = false;
 				/*
 				if ( ListFindNoCase(attributes.value, ListGetAt(attributes.subvalues,i))  ) {
@@ -417,6 +470,13 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 			</cfscript>
 		<!--- <cfelse>
 			<cfthrow message="&lt;#TagName#&gt; must include cf_sebSubfield tags or a subquery or subtable or subvalues attribute." type="cftag"> --->
+		</cfif>
+		<cfif attributes.type EQ "options">
+			<cfif ArrayLen(ThisTag.qSubFields) GT 5>
+				<cfset attributes.type="select">
+			<cfelse>
+				<cfset attributes.type="radio">
+			</cfif>
 		</cfif>
 	</cfif>
 	<cfif ListFindNoCase(liSubFieldTypes, attributes.type)>
@@ -459,7 +519,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 	</cfcase>
 	
 	<cfcase value="plaintext">
-		<cfsavecontent variable="input"><div id="#attributes.id#" class="sebPlainText"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>>#attributes.value#<input type="hidden" name="#attributes.fieldname#" value="#attributes.value#"/></div></cfsavecontent>
+		<cfsavecontent variable="input"><div id="#attributes.id#-div" class="sebPlainText"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><span id="#attributes.id#-val">#attributes.value#</span><input type="hidden" id="#attributes.id#" name="#attributes.fieldname#" value="#attributes.value#"/></div></cfsavecontent>
 	</cfcase>
 	
 	<cfcase value="file">
@@ -476,7 +536,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		
 		<cfif attributes.locked>
 			<cfif Len(attributes.value)>
-				<cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, "."))>
+				<cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, ".")) AND attributes.showImage>
 					<cfsavecontent variable="input"><input type="hidden" name="#attributes.fieldname#" value=""/><cfif attributes.showFile><img src="#imgPath#" alt="#attributes.label#" class="sebField-image"></cfif></cfsavecontent>
 				<cfelse>
 					<cfsavecontent variable="input"><input type="hidden" name="#attributes.fieldname#" value=""/><cfif attributes.showFile><a href="#attributes.urlpath##GetFileFromPath(attributes.value)#" target="_new" title="#attributes.label#">#GetFileFromPath(attributes.value)#</a></cfif></cfsavecontent>
@@ -487,7 +547,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		<cfelse>
 			<cfif NOT Len(attributes.style)><cfset attributes.style = "padding:0px;margin:0px;"></cfif>
 			<cfsavecontent variable="input">
-			<cfif Len(attributes.value)><cfif attributes.showFile><div><cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, "."))><img src="#imgPath#" alt="#attributes.label#" class="sebField-image"> </cfif><strong><a href="#attributes.URLPath##GetFileFromPath(attributes.value)#">#GetFileFromPath(attributes.value)#</a></strong></div></cfif><cfif NOT attributes.required><div title="Remove #GetFileFromPath(attributes.value)#"><input type="checkbox" name="delete#attributes.fieldname#" id="delete#attributes.fieldname#" value="1" title="clear #attributes.label#"><label id="lbl-delete#attributes.fieldname#" for="delete#attributes.fieldname#">remove #GetFileFromPath(attributes.value)#</label></div><cfelse><div>replace with:</div></cfif></cfif>
+			<cfif Len(attributes.value)><cfif attributes.showFile><div><cfif ListFindNoCase("gif,jpg,png", ListLast(attributes.value, ".")) AND attributes.showImage><img src="#imgPath#" alt="#attributes.label#" class="sebField-image"> </cfif><strong><a href="#attributes.URLPath##GetFileFromPath(attributes.value)#">#GetFileFromPath(attributes.value)#</a></strong></div></cfif><cfif NOT attributes.required><div title="Remove #GetFileFromPath(attributes.value)#"><input type="checkbox" name="delete#attributes.fieldname#" id="delete#attributes.fieldname#" value="1" title="clear #attributes.label#"><label id="lbl-delete#attributes.fieldname#" for="delete#attributes.fieldname#">remove #GetFileFromPath(attributes.value)#</label></div><cfelse><div>replace with:</div></cfif></cfif>
 			<input type="file" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>/></cfsavecontent>
 		</cfif>
 	</cfcase>
@@ -498,7 +558,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 
 	<cfcase value="checkbox">
 		<cfsavecontent variable="input"><fieldset class="checkbox" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
-	<cfset thisID = "#attributes.id#_#thisSubField#"><input type="checkbox" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif>/> <label id="lbl-#thisID#" for="#thisID#">#ThisTag.qsubfields[thisSubField].display#</label><br/></cfloop></fieldset></cfsavecontent>
+	<cfset thisID = "#attributes.id#_#thisSubField#"><input type="checkbox" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].title)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><br/></cfloop></fieldset></cfsavecontent>
 	</cfcase>
 	
 	<cfcase value="date,jtdate"><cfsavecontent variable="input">
@@ -566,7 +626,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 
 	<cfcase value="radio">
 		<cfsavecontent variable="input"><!-- #attributes.value# --><fieldset class="radio" id="#attributes.id#_set"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
-	<cfset thisID = "#attributes.id#_#thisSubField#"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif>/> <label id="lbl-#thisID#" for="#thisID#">#ThisTag.qsubfields[thisSubField].display#</label><br/></cfloop></fieldset></cfsavecontent>
+	<cfset thisID = "#attributes.id#_#thisSubField#"><input type="radio" id="#thisID#" name="#attributes.fieldname#" value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> checked="checked"</cfif>/> <label id="lbl-#thisID#" for="#thisID#"<cfif StructKeyExists(ThisTag.qsubfields[thisSubField],"title")> title="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].radio)#"</cfif>>#ThisTag.qsubfields[thisSubField].display#</label><br/></cfloop></fieldset></cfsavecontent>
 	</cfcase>
 
 	<cfcase value="reset">
@@ -575,9 +635,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 
 	<cfcase value="select">
 		<cfsavecontent variable="input">
-<select name="#attributes.fieldname#"<cfif isDefined("attributes.multiple")> multiple</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><option value=""><cfif Len(Trim(attributes.topopt))>#attributes.topopt#<cfelse>&nbsp;</cfif></option><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
+<select name="#attributes.fieldname#"<cfif isDefined("attributes.multiple")> multiple</cfif><cfif Len(attributes.id)> id="#attributes.id#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>><option value="#attributes.topoptvalue#"><cfif Len(Trim(attributes.topopt))>#attributes.topopt#<cfelse>&nbsp;</cfif></option><cfloop index="thisSubField" from="1" to="#ArrayLen(ThisTag.qsubfields)#" step="1">
 	<option value="#HTMLEditFormat(ThisTag.qsubfields[thisSubField].value)#"<cfif ThisTag.qsubfields[thisSubField].checked> selected="selected"</cfif>><cfif Len(Trim(ThisTag.qsubfields[thisSubField].display))>#ThisTag.qsubfields[thisSubField].display#<cfelse>&nbsp;</cfif></option></cfloop>
-</select><cfif Len(attributes.addlink)> <a href="#attributes.addlink#">add new #LCase(attributes.label)#</a></cfif></cfsavecontent>
+</select><cfif Len(attributes.addlink)> <a href="#attributes.addlink#" id="#attributes.id#-addlink">add new #LCase(attributes.label)#</a></cfif></cfsavecontent>
 	</cfcase>
 	
 	<cfcase value="subdelete">
@@ -614,6 +674,10 @@ http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
 		<cfsavecontent variable="input"><textarea name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> cols="#attributes.cols#" rows="#attributes.rows#"<cfif Len(attributes.wrap)> wrap="#attributes.wrap#"</cfif><cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt]) AND thisHtmlAtt neq "size"> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop>>#attributes.value#</textarea><cfif isNumeric(attributes.length) AND attributes.length gt 0><div class="sebTextareaMaxLength" id="#attributes.id#-maxlength">(Maximum characters: #attributes.length#)</div><div id="#attributes.id#-countdiv" style="display:none;">You have <input readonly="readonly" type="text" name="#attributes.id#_countdown" id="#attributes.id#-countdown" size="3" value="#attributes.length-Len(attributes.value)#"> characters left.</div></cfif></cfsavecontent>
 	</cfcase>
 
+	<cfcase value="time"><cfif isDate(attributes.value)><cfset attributes.value = TimeFormat(attributes.value)></cfif>
+		<cfsavecontent variable="input"><input type="text" name="#attributes.fieldname#"<cfif Len(attributes.id)> id="#attributes.id#"</cfif> value="#HTMLEditFormat(attributes.value)#"<cfloop index="thisHtmlAtt" list="#liHtmlAtts#"><cfif Len(attributes[thisHtmlAtt])> #thisHtmlAtt#="#attributes[thisHtmlAtt]#"</cfif></cfloop><cfif Len(attributes.length)> maxlength="#attributes.length#"</cfif>/></cfsavecontent>
+	</cfcase>
+	
 	<cfcase value="yesno,yes/no,YES/NO RADIO">
 		<cfif attributes.locked>
 			<cfsavecontent variable="input">#YesNoFormat(attributes.value)#<input type="hidden" id="#attributes.id#" name="#attributes.fieldname#" value="#attributes.value#" /></cfsavecontent>
@@ -728,7 +792,8 @@ ha#attributes.id#.generate();
 		thisInput = ThisTag.GeneratedContent;
 		ThisTag.GeneratedContent = "";
 	}
-	if ( Len(attributes.Label) AND NOT ListFindNoCase(liButtonTypes, attributes.type) ) {
+	thisInput = ReplaceNoCase(thisInput,  "[id]", '#attributes.id#');
+	if ( Len(Trim(attributes.Label)) AND NOT ListFindNoCase(liButtonTypes, attributes.type) ) {
 		thisInput = ReplaceNoCase(thisInput,  "[Label]", '#attributes.Label#');
 		if ( attributes.required ) {
 			thisInput = ReplaceNoCase(thisInput,  "[ReqMark]", ThisTag.config.ReqMark);
@@ -738,11 +803,12 @@ ha#attributes.id#.generate();
 		thisInput = ReplaceNoCase(thisInput,  "[Colon]", ThisTag.config.Colon);
 		thisInput = ReplaceNoCase(thisInput,  '{', '<label id="lbl-#attributes.id#" for="#attributes.id#" class="sebform">');
 		thisInput = ReplaceNoCase(thisInput,  '}', '</label>');
-		if ( Len(attributes.help) ) {
-			thisInput = ReplaceNoCase(thisInput,  "<label", '<label title="#attributes.help#"', 'ALL');
+		if ( Len(attributes.help) AND NOT FindNoCase(chr(34),attributes.help) ) {
+			thisInput = ReplaceNoCase(thisInput,  '#chr(60)#label', '#chr(60)#label title="#attributes.help#"', 'ALL');
 		}
 	} else {
 		thisInput = ReplaceNoCase(thisInput,  "[Label]", "");
+		thisInput = ReplaceNoCase(thisInput,  "[Colon]", "");
 		thisInput = ReplaceNoCase(thisInput,  "[ReqMark]", "");
 		thisInput = REReplaceNoCase(thisInput,"{[^}]*}","","ALL");
 	}
