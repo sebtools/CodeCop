@@ -1,10 +1,9 @@
 <cfcomponent displayname="Datasource Manager">
 
 <cffunction name="init" access="public" returntype="any" output="no" hint="I instantiate and return this component.">
-	<cfargument name="DataMgr" type="any" required="no">
 	<cfargument name="Factory" type="any" required="no">
 	
-	<cfset variables.DataMgr = arguments.DataMgr>
+	<cfset variables.DataMgr = CreateObject("component","com.sebtools.DataMgr").init("")>
 	
 	<cfif StructKeyExists(arguments,"Factory")>
 		<cfset variables.Factory = arguments.Factory>

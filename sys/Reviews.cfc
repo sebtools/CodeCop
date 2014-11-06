@@ -215,7 +215,7 @@
 		<!--- Run each rule against this file --->
 		<cfloop query="qRules">
 			<!--- If this is a file that should be checked for this rule --->
-			<cfif allExtensions OR ListFindNoCase(ExtensionNames,ListLast(ListLast(FileInfo.FullName,"/"),"."))>
+			<cfif allExtensions IS true OR ListFindNoCase(ExtensionNames,ListLast(ListLast(FileInfo.FullName,"/"),"."))>
 				<!--- Run check for this rule type --->
 				<cfset variables.RuleTypes[RuleType].checkRule(ReviewID,RuleID,FileInfo)>
 			</cfif>
