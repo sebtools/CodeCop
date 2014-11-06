@@ -36,7 +36,7 @@ In CF7+, this gives us variables.Factory which includes the Admin API (so we can
 		</cfif>
 	</cfinvoke>
 	<!--- Load the settings component to handle settings for CodeCop --->
-	<cfset Application["CodeCop"].SettingsMgr = CreateObject("component","sys.Settings").init(Application["CodeCop"].DatasourceMgr,ExpandPath("../config.cfm"))>
+	<cfset Application["CodeCop"].SettingsMgr = CreateObject("component","sys.Settings").init(Application["CodeCop"].DatasourceMgr,ExpandPath("config.cfm"))>
 </cfif>
 
 <cfset request.Paths = Application["CodeCop"].ConfigSite.getPaths()>
@@ -47,13 +47,16 @@ In CF7+, this gives us variables.Factory which includes the Admin API (so we can
 <cfif NOT ListFindNoCase(CGI.SCRIPT_NAME,"install","/") AND NOT ListLast(CGI.SCRIPT_NAME,"/") EQ "about.cfm">
 	<!--- In CF8 admin, create datasource and menu option --->
 	<cfif CFVersionMajor GTE 8 AND isInAdmin>
-		<cfset ds = createObject("component","cfide.adminAPI.datasource")>
-		<cfset DerbyCFC = CreateObject("component","sys.derbyCFC").init(ds=ds)>
-		<cfset DerbyCFC.createIfNotExists(name="CodeCop",enable_clob=1,enable_blob=1)>
-		<cfset Application.CodeCop.SettingsMgr.saveSettings(datasource="CodeCop",database="Derby")>
+		<!--- In CF8, if no datasource is set, create a Derby datasource --->
+		<cfif NOT Len(SettingsData.datasource)>
+			<cfset ds = createObject("component","cfide.adminAPI.datasource")>
+			<cfset DerbyCFC = CreateObject("component","sys.derbyCFC").init(ds=ds)>
+			<cfset DerbyCFC.createIfNotExists(name="CodeCop",enable_clob=1,enable_blob=1)>
+			<cfset Application.CodeCop.SettingsMgr.saveSettings(datasource="CodeCop",database="Derby")>
+			<cfset SettingsData = Application["CodeCop"].SettingsMgr.getSettings()><!--- Get settings data --->
+		</cfif>
 		<cfset addAdminMenu()>
 		<cfset request.CodeCop_LoadAdminMenu = true>
-		<cfset SettingsData = Application["CodeCop"].SettingsMgr.getSettings()><!--- Get settings data --->
 	</cfif>
 	<cfif Len(Trim(SettingsData.datasource)) AND Len(Trim(SettingsData.database))>
 		<!--- If url indicates initialize or if CodeCop hasn't already been successfully initialized, initilize it. --->
