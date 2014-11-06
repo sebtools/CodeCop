@@ -20,7 +20,7 @@ You can install CodeCop either in the CF Admin or on its own.
 6. Choose a database and hit submit
    (CodeCop will install itself on the chosen database. All tables have a prefix of "chk", which should prevent naming conflicts)
    (Database support includes any supported by DataMgr.cfc - view about.cfm for current list)
-   (supported as of this writing: Access,MS SQL,MySQL,PostGreSQL)
+   (supported as of this writing: Access,Derby,MS SQL,MySQL,PostGreSQL)
 7. Start using CodeCop.
 
 
@@ -36,5 +36,5 @@ You can install CodeCop either in the CF Admin or on its own.
 5. Choose a database and hit submit
    (CodeCop will install itself on the chosen database. All tables have a prefix of "chk", which should prevent naming conflicts)
    (Database support includes any supported by DataMgr.cfc - view about.cfm for current list)
-   (supported as of this writing: Access,MS SQL,MySQL,PostGreSQL)
+   (supported as of this writing: Access,Derby,MS SQL,MySQL,PostGreSQL)
 6. Start using CodeCop.

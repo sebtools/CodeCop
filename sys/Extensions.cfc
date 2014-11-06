@@ -15,16 +15,6 @@
 <cffunction name="getExtension" returntype="query" access="public" output="no" hint="I return the requested extension.">
 	<cfargument name="ExtensionID" type="string" required="yes">
 	
-	<!--- <cfset var qExtension = 0>
-	<cfset var qRules = getRules(arguments.ExtensionID)>
-	
-	<cfquery name="qExtension" datasource="#variables.datasource#">
-	SELECT	ExtensionID,Extension,'#ValueList(qRules.RuleID)#' AS Rules, #qRules.RecordCount# AS NumRules
-	FROM	chkExtensions
-	WHERE	ExtensionID = <cfqueryparam value="#arguments.ExtensionID#" cfsqltype="CF_SQL_INTEGER">
-	</cfquery>
-	
-	<cfreturn qExtension> --->
 	<cfreturn variables.Datamgr.getRecord(tablename="chkExtensions",data=arguments)>
 </cffunction>
 
@@ -60,12 +50,6 @@
 
 <cffunction name="removeExtension" returntype="void" access="public" output="no" hint="I delete the given extension.">
 	<cfargument name="ExtensionID" type="string" required="yes">
-	
-	<!--- <cfset var qRules = getRules(arguments.ExtensionID)>
-	
-	<cfif qRules.RecordCount>
-		<cfthrow message="You cannot delete an extension that is associated with one or more rules." type="CodeCop" errorcode="ExtensionHasRules">
-	</cfif> --->
 	
 	<cfset variables.DataMgr.deleteRecord("chkExtensions",arguments)>
 	

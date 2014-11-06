@@ -91,7 +91,6 @@
 ">
 	
 	<cfset var linedelim = CreateObject("java", "java.lang.System").getProperty("line.separator")><!--- line separator for this OD --->
-	<cfset var qRule = variables.Rules.getRule(RuleID)>
 	<cfset var isIssue = true><!--- Assume it is a valid issue (we may run custom code to check that later though) --->
 	<cfset var issue = StructNew()><!--- store information about this issue --->
 	<cfset var IssueID = 0>
@@ -109,30 +108,58 @@
 	The higher result tends to be the right one.
 	--->
 	<cfset issue["line"] = Max( ListLen(Left(FileInfo.Contents,pos), linedelim) , ListLen(Left(FileInfo.Contents,pos), cr) )>
-	<!---
-	If we have some custom code for this rule, run it.
-	If this rule exists, it will decide whether this is a valid issue.
-	--->
-	<cfif Len(qRule.CustomCode)>
-		<cftry>
-			<cfinvoke component="custom.#qRule.UUID#" method="runRuleCheck" returnvariable="isIssue">
-				<cfinvokeargument name="Folder" value="#FileInfo.Folder#">
-				<cfinvokeargument name="FileName" value="#FileInfo.FullName#">
-				<cfinvokeargument name="string" value="#issue.string#">
-				<cfinvokeargument name="info" value="#info#">
-			</cfinvoke>
-			<cfcatch>
-				<!--- Since this error is type "CodeCop", it can be caught by any upstairs code looking for that type. --->
-				<cfthrow message="Error in Rule ""#qRule.RuleName#"": #CFCATCH.Message#" type="CodeCop" detail="#CFCATCH.Detail#" errorcode="CustomRuleError">
-			</cfcatch>
-		</cftry>
-	</cfif>
+	<!--- Run rule check --->
+	<cfinvoke returnvariable="isIssue" method="runRuleCheck">
+		<cfinvokeargument name="RuleID" value="#arguments.RuleID#">
+		<cfinvokeargument name="Folder" value="#FileInfo.Folder#">
+		<cfinvokeargument name="FileName" value="#FileInfo.FullName#">
+		<cfinvokeargument name="string" value="#issue.string#">
+		<cfinvokeargument name="info" value="#info#">
+	</cfinvoke>
 	<!--- If this is a valid issue, save it. --->
 	<cfif isIssue>
 		<cfset IssueID = variables.DataMgr.saveRecord("chkIssues",issue)>
 	</cfif>
 	
 	<cfreturn IssueID>
+</cffunction>
+
+
+<cffunction name="runRuleCheck" access="public" returntype="any" output="false" hint="">
+	<cfargument name="RuleID" type="numeric" required="yes">
+	<cfargument name="Folder" type="string" required="yes">
+	<cfargument name="FileName" type="string" required="yes">
+	<cfargument name="string" type="string" required="yes">
+	<cfargument name="info" type="struct" required="yes">
+	
+	<cfset var qRule = variables.Rules.getRule(RuleID)>
+	<cfset var result = false>
+	
+	<!---
+	If we have some custom code for this rule, run it.
+	If this rule exists, it will decide whether this is a valid issue.
+	--->
+	<cfif Len(qRule.CustomCode)>
+		<cftry>
+			<cfinvoke returnvariable="result" component="custom.#qRule.UUID#" method="runRuleCheck">
+				<cfinvokeargument name="Folder" value="#arguments.Folder#">
+				<cfinvokeargument name="FileName" value="#arguments.FileName#">
+				<cfinvokeargument name="string" value="#arguments.string#">
+				<cfinvokeargument name="info" value="#arguments.info#">
+			</cfinvoke>
+			<cfcatch>
+				<cfif CFCATCH.Message CONTAINS "Could not find the ColdFusion Component">
+					<cfset variables.Rules.writeCustomCode(qRule.RuleID)>
+					<cfset runRuleCheck(argumentCollection=arguments)>
+				<cfelse>
+					<!--- Since this error is type "CodeCop", it can be caught by any upstairs code looking for that type. --->
+					<cfthrow message="Error in Rule ""#qRule.RuleName#"": #CFCATCH.Message#" type="CodeCop" detail="#CFCATCH.Detail#" errorcode="CustomRuleError">
+				</cfif>
+			</cfcatch>
+		</cftry>
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 </cfcomponent>
