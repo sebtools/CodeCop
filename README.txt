@@ -2,6 +2,3 @@
 
 For installation instructions, see: install.txt
 For programming notes, see: code_notes.txt
-
-For more resources:
-http://www.bryantwebconsulting.com/products/codecop.cfm

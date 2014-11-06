@@ -1,5 +1,5 @@
-<!--- 2.0.2 (Build 91) --->
-<!--- Last Updated: 2007-04-13 --->
+<!--- 2.2 Alpha 2 Dev 3 (Build 125) --->
+<!--- Last Updated: 2008-02-19 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MySQL" hint="I manage data interactions with the MySQL database. I can be used to handle inserts/updates.">
 
@@ -49,12 +49,47 @@
 		<cfif Len(result)>
 			<cfset result =  "#result#, '#arguments.delimeter#', #colname#">
 		<cfelse>
-			<cfset result = colname>
+			<cfset result = "#colname#">
 		</cfif>
 	</cfloop>
 	<cfset result = "CONCAT(#result#)">
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="concatFields" access="public" returntype="array" output="no" hint="I return the SQL to concatenate the given fields with the given delimeter.">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="fields" type="string" required="yes">
+	<cfargument name="delimeter" type="string" default=",">
+	<cfargument name="tablealias" type="string" required="no">
+	
+	<cfset var col = "">
+	<cfset var aSQL = ArrayNew(1)>
+	<cfset var aSQL2 = ArrayNew(1)>
+	<cfset var fieldSQL = 0>
+	
+	<cfif NOT StructKeyExists(arguments,"tablealias")>
+		<cfset arguments.tablealias = arguments.tablename>
+	</cfif>
+	
+	<cfloop index="colname" list="#arguments.fields#">
+		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=colname,tablealias=arguments.tablealias,useFieldAlias=false)>
+		<cfif ArrayLen(aSQL)>
+			<cfset ArrayAppend(aSQL,", '#arguments.delimeter#', ")>
+		</cfif>
+		<cfif isSimpleValue(fieldSQL)>
+			<cfset ArrayAppend(aSQL,"#fieldSQL#")>
+		<cfelse>
+			<!--- <cfset ArrayAppend(aSQL,"CAST(")> --->
+			<cfset ArrayAppend(aSQL,fieldSQL)>
+			<!--- <cfset ArrayAppend(aSQL," AS varchar)")> --->
+		</cfif>
+	</cfloop>
+	<cfset ArrayAppend(aSQL2,"CONCAT(")>
+	<cfset ArrayAppend(aSQL2,aSQL)>
+	<cfset ArrayAppend(aSQL2,")")>
+	
+	<cfreturn aSQL2>
 </cffunction>
 
 <cffunction name="escape" access="public" returntype="string" output="yes" hint="I return an escaped value for a table or field.">
@@ -220,6 +255,47 @@
 	<cfreturn " LIMIT #arguments.maxrows#">
 </cffunction>
 
+<cffunction name="getFieldSQL_Has" access="private" returntype="any" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="field" type="string" required="yes">
+	<cfargument name="tablealias" type="string" required="no">
+	
+	<cfset var sField = getField(arguments.tablename,arguments.field)>
+	<cfset var dtype = getEffectiveDataType(arguments.tablename,sField.Relation.field)>
+	<cfset var aSQL = ArrayNew(1)>
+	
+	<cfswitch expression="#dtype#">
+	<cfcase value="numeric">
+		<cfset ArrayAppend(aSQL,"IFNULL(")>
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+		<cfset ArrayAppend(aSQL," > 0,0)")>
+	</cfcase>
+	<cfcase value="string">
+		<cfset ArrayAppend(aSQL,"IFNULL(LENGTH(")>
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+		<cfset ArrayAppend(aSQL,"),0) > 0")>
+	</cfcase>
+	<cfcase value="date">
+		<cfset ArrayAppend(aSQL,"IF(")>
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+		<cfset ArrayAppend(aSQL," IS NULL,0,1)")>
+	</cfcase>
+	<cfcase value="boolean">
+		<cfset ArrayAppend(aSQL,"IFNULL(")>
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+		<cfset ArrayAppend(aSQL,",0)")>
+	</cfcase>
+	</cfswitch>
+	
+
+	
+	<cfreturn aSQL>	
+</cffunction>
+
+<cffunction name="getNowSQL" access="public" returntype="string" output="no" hint="I return the SQL for the current date/time.">
+	<cfreturn "CURRENT_TIMESTAMP()">
+</cffunction>
+
 <cffunction name="isValidDate" access="public" returntype="boolean" output="no">
 	<cfargument name="value" type="string" required="yes">
 	
@@ -236,7 +312,7 @@
 	<cfreturn true>
 </cffunction>
 
-<cffunction name="getInsertedIdentity" access="private" returntype="numeric" output="no" hint="I get the value of the identity field that was just inserted into the given table.">
+<cffunction name="getInsertedIdentity" access="private" returntype="string" output="no" hint="I get the value of the identity field that was just inserted into the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="identfield" type="string" required="yes">
 	

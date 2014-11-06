@@ -26,7 +26,7 @@
 	<seb:sebField fieldname="Folder" required="true" Length="250" size="75">
 	<!--- Only show browse server in cfadmin of CF7 (security and use of undocumented variable) --->
 	<!--- As it requires JavaScript, it will only show if JS is running. --->
-	<cfif isInAdmin AND CFVersionMajor eq 7><seb:sebField type="custom1"><div id="browse-server"></div></seb:sebField></cfif>
+	<cfif isInAdmin AND CFVersionMajor GTE 7><seb:sebField type="custom1"><div id="browse-server"></div></seb:sebField></cfif>
 	<seb:sebField fieldname="PackageID" label="Rules Package" type="select" subquery="qPackages" subvalues="PackageID" subdisplays="PackageName" defaultValue="#DefaultPackageID#" required="true">
 	<seb:sebField fieldname="allExtensions" label="All Extensions?" type="yesno" defaultValue="true" /><!--- could have used: onclick="showExtensions();", but that is less unobstructive --->
 	<seb:sebField fieldname="Extensions" type="checkbox" subquery="qExtensions" subvalues="ExtensionID" subdisplays="Extension" />

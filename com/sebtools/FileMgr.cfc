@@ -23,7 +23,9 @@
 	</cfif>
 	<cfset destination = ListAppend(destination,arguments.FileName,variables.dirdelim)>
 	
-	<cffile action="DELETE" file="#destination#">
+	<cfif FileExists(destination)>
+		<cffile action="DELETE" file="#destination#">
+	</cfif>
 	
 </cffunction>
 <!---
@@ -83,19 +85,81 @@
 	</cfif>
 </cffunction>
 
+<cffunction name="getDirectory" access="public" returntype="string" output="no">
+	<cfargument name="Folder" type="string" required="yes">
+	
+	<cfset var result = ListChangeDelims(arguments.Folder,variables.dirdelim,"/")>
+	
+	<cfset result = ListAppend(variables.UploadPath,result,variables.dirdelim)>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getDelimiter" access="public" returntype="string" output="no">
+	<cfreturn variables.dirdelim>
+</cffunction>
+
+<cffunction name="getFileLen" access="public" returntype="numeric" output="no">
+	<cfargument name="FileName" type="string" required="yes">
+	<cfargument name="Folder" type="string" required="no">
+	
+	<cfset var result = 0>
+	<cfset var path = variables.UploadPath>
+	<cfset var qFiles = 0>
+	
+	<cfif StructKeyExists(arguments,"Folder")>
+		<cfset path = ListAppend(path,arguments.Folder,variables.dirdelim)>
+	</cfif>
+	
+	<cfdirectory action="LIST" directory="#path#" name="qFiles" filter="#arguments.FileName#">
+	
+	<cfloop query="qFiles">
+		<cfif Name EQ arguments.FileName>
+			<cfset result = size>
+		</cfif>
+	</cfloop>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="getFilePath" access="public" returntype="string" output="no">
+	<cfargument name="FileName" type="string" required="yes">
+	<cfargument name="Folder" type="string" required="no">
+	
+	<cfset var result = variables.UploadPath>
+	
+	<cfif StructKeyExists(arguments,"Folder")>
+		<cfset result = ListAppend(result,arguments.Folder,variables.dirdelim)>
+	</cfif>
+	<cfset result = ListAppend(result,arguments.FileName,variables.dirdelim)>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="makedir" access="public" returntype="any" output="no" hint="I make a directory (if it doesn't exist already).">
 	<cfargument name="Directory" type="string" required="yes">
 	
 	<cfset var thisDir = "">
 	<cfset var parent = "">
 	
-	<cfif NOT DirectoryExists(arguments.Directory)>
+	<cfif NOT DirectoryExists(arguments.Directory) AND ListLen(arguments.Directory,variables.dirdelim)>
 		<cfset parent = ListDeleteAt(arguments.Directory,ListLen(arguments.Directory,variables.dirdelim),variables.dirdelim)>
 		<cfif NOT DirectoryExists(parent)>
 			<cfset makedir(parent)>
 		</cfif>
 		<cfdirectory action="CREATE" directory="#arguments.Directory#">
 	</cfif>
+	
+</cffunction>
+
+<cffunction name="makeFolder" access="public" returntype="any" output="no">
+	<cfargument name="Folder" type="string" required="yes">
+	
+	<cfset var Directory = ListChangeDelims(arguments.Folder,variables.dirdelim,"/")>
+	
+	<cfset Directory = ListAppend(variables.UploadPath,Directory,variables.dirdelim)>
+	
+	<cfset makedir(Directory)>
 	
 </cffunction>
 
@@ -136,7 +200,7 @@
 	
 </cffunction>
 
-<cffunction name="uploadFile" access="public" returntype="struct" output="no" hint="I upload a file.">
+<cffunction name="uploadFile" access="public" returntype="struct" output="no">
 	<cfargument name="FieldName" type="string" required="yes">
 	<cfargument name="Folder" type="string" required="no">
 	<cfargument name="NameConflict" type="string" default="Error">

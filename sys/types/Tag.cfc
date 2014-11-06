@@ -49,18 +49,7 @@
 	</cfif>
 	
 	<cfif Len(Trim(string))>
-		<cftry>
-			<cfset XmlData = XmlParse(string)>
-			<cfcatch>
-				<cfset string = Xmlify(string)>
-				<cftry>
-					<cfset XmlData = XmlParse(string)>
-					<cfcatch>
-						<cfthrow message="Unable to parse: [#HTMLEditFormat(string)#]" type="CodeCop" detail="#CFCATCH.Message#" errorcode="NoXmlParse">
-					</cfcatch>
-				</cftry>
-			</cfcatch>
-		</cftry>
+		<cfset XmlData = XmlParser(string)>
 	</cfif>
 	
 	<cfreturn XmlData[tag.tagName].XmlAttributes>
@@ -211,6 +200,30 @@
 	<cfreturn alltags>
 </cffunction>
 
+<cffunction name="XmlParser" access="private" returntype="any" otuput="no">
+	<cfargument name="string" type="string" value="string">
+	
+	<cfset var result = 0>
+	
+	<cfset arguments.string = ReplaceNoCase(arguments.string,"&amp;","&","ALL")>
+	<cfset arguments.string = ReplaceNoCase(arguments.string,"&","&amp;","ALL")>
+	
+	<cftry>
+		<cfset result = XmlParse(arguments.string)>
+		<cfcatch>
+			<cfset arguments.string = Xmlify(arguments.string)>
+			<cftry>
+				<cfset result = XmlParse(arguments.string)>
+				<cfcatch>
+					<cfthrow message="Unable to parse: [#HTMLEditFormat(arguments.string)#]" type="CodeCop" detail="#CFCATCH.Message#" errorcode="NoXmlParse">
+				</cfcatch>
+			</cftry>
+		</cfcatch>
+	</cftry>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="Xmlify" access="private" returntype="string" output="no">
 	<cfargument name="string" type="string" required="yes">
 	
@@ -228,7 +241,7 @@
 		<cfset pos = result.pos[1]>
 		<cfif pos>
 			<cfset substring = Mid(string,result.pos[1],result.len[1])>
-			<cfset substring = " #ListFirst(substring,"=")#=""#ListLast(substring,"=")#""">
+			<cfset substring = " #XmlFormat(ListFirst(substring,"="))#=""#XmlFormat(ListLast(substring,"="))#""">
 			<cfset string = Left(string,result.pos[1]-1) & substring & Right(string,Len(string)-result.pos[1]-result.len[1]+1)>
 		</cfif>
 		<cfset i = i + 1>

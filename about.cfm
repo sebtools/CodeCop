@@ -41,7 +41,7 @@
 		<li><a href="http://coldfusion.sys-con.com/read/154231.htm">Layout Components</a></li>
 	</ul>
 	<p>These tools, in turn, take advantage of JavaScript code written by others, including <a href="http://www.pengoworks.com/index.cfm?action=get:qforms">qForms</a>.</p>
-	<p>I used my (still very young) <a href="http://steve.coldfusionjournal.com/preview_of_new_code_creator.htm" target="_blank">Code Generator</a> to kick-start development.</p>
+	<p>I used my (still very young) <a href="http://www.bryantwebconsulting.com/preview_of_new_code_creator.htm" target="_blank">Code Generator</a> to kick-start development.</p>
 	
 	<h3>Credits</h3>
 	<p>Designed, built and maintained by <a href="http://www.bryantwebconsulting.com/">Steve Bryant</a></p>

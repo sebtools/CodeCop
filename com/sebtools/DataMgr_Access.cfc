@@ -1,5 +1,5 @@
-<!--- 2.0.2 (Build 91) --->
-<!--- Last Updated: 2007-04-13 --->
+<!--- 2.2 Alpha 2 Dev 3 (Build 125) --->
+<!--- Last Updated: 2008-02-19 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for MS Access" hint="I manage data interactions with the MS Access database. I can be used to handle inserts/updates.">
 
@@ -85,6 +85,24 @@
 	<cfreturn CreateSQL>
 </cffunction>
 
+<cffunction name="getNewSortNum" access="public" returntype="numeric" output="no" hint="I get the value an increment higher than the highest value in the given field to put a record at the end of the sort order.">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="sortfield" type="string" required="yes" hint="The field holding the sort order.">
+	
+	<cfset var qLast = 0>
+	<cfset var result = 0>
+	
+	<cfset qLast = runSQL("SELECT TOP 1 #escape(arguments.sortfield)# FROM #escape(arguments.tablename)#")>
+	
+	<cfif qLast.RecordCount and isNumeric(qLast[arguments.sortfield][1])>
+		<cfset result = qLast[arguments.sortfield][1] + 1>
+	<cfelse>
+		<cfset result = 1>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="concat" access="public" returntype="string" output="no" hint="I return the SQL to concatenate the given fields with the given delimeter.">
 	<cfargument name="fields" type="string" required="yes">
 	<cfargument name="delimeter" type="string" default="">
@@ -94,13 +112,44 @@
 	
 	<cfloop index="colname" list="#arguments.fields#">
 		<cfif Len(result)>
-			<cfset result =  "#result# & '#arguments.delimeter#' & #colname#">
+			<cfset result =  "#result# & '#arguments.delimeter#' & CSTR(#colname#)">
 		<cfelse>
-			<cfset result = colname>
+			<cfset result = "CSTR(#colname#)">
 		</cfif>
 	</cfloop>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="concatFields" access="public" returntype="array" output="no" hint="I return the SQL to concatenate the given fields with the given delimeter.">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="fields" type="string" required="yes">
+	<cfargument name="delimeter" type="string" default=",">
+	<cfargument name="tablealias" type="string" required="no">
+	
+	<cfset var col = "">
+	<cfset var aSQL = ArrayNew(1)>
+	<cfset var fieldSQL = 0>
+	
+	<cfif NOT StructKeyExists(arguments,"tablealias")>
+		<cfset arguments.tablealias = arguments.tablename>
+	</cfif>
+	
+	<cfloop index="colname" list="#arguments.fields#">
+		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=colname,tablealias=arguments.tablealias,useFieldAlias=false)>
+		<cfif ArrayLen(aSQL)>
+			<cfset ArrayAppend(aSQL," & '#arguments.delimeter#' & ")>
+		</cfif>
+		<cfif isSimpleValue(fieldSQL)>
+			<cfset ArrayAppend(aSQL,"CSTR(#fieldSQL#)")>
+		<cfelse>
+			<cfset ArrayAppend(aSQL,"CSTR(")>
+			<cfset ArrayAppend(aSQL,fieldSQL)>
+			<cfset ArrayAppend(aSQL,")")>
+		</cfif>
+	</cfloop>
+	
+	<cfreturn aSQL>
 </cffunction>
 
 <cffunction name="escape" access="public" returntype="string" output="no" hint="I return an escaped value for a table or field.">
@@ -120,16 +169,16 @@
 
 	<cfset var qTables = 0>
 	
-	<cftry>
+	<!--- <cftry> --->
 		<cfset qTables = runSQL("SELECT Name AS TableName FROM MSysObjects WHERE Type = 1 AND Flags = 0")>
-		<cfcatch>
+		<!--- <cfcatch>
 			<cfif cfcatch.detail CONTAINS "no read permission">
 				<cfthrow message="Your Access database doesn't have appropriate permissions to use tables without loading them via loadXML()." type="DataMgr" detail="In order to allow this method, open your database using MS Access and check the 'System objects' box under Tools/Options/View. You may also need to make sure 'Read Data' is checked for every table in Tools/Security/User and Group Permissions.">
 			<cfelse>
 				<cfrethrow>
 			</cfif>
 		</cfcatch>
-	</cftry>
+	</cftry> --->
 	
 	<cfreturn ValueList(qTables.TableName)>
 </cffunction>
@@ -239,6 +288,10 @@
 	<cfreturn result>
 </cffunction>
 
+<cffunction name="getNowSQL" access="public" returntype="string" output="no" hint="I return the SQL for the current date/time.">
+	<cfreturn "Now()">
+</cffunction>
+
 <cffunction name="loadXML" access="public" returntype="void" output="false" hint="I add table/tables from XML and optionally create tables/columns as needed (I can also load data to a table upon its creation).">
 	<cfargument name="xmldata" type="string" required="yes" hint="XML data of tables to load into DataMgr follows. Schema: http://www.bryantwebconsulting.com/cfc/DataMgr.xsd">
 	<cfargument name="docreate" type="boolean" default="false" hint="I indicate if the table should be created in the database if it doesn't already exist.">
@@ -274,7 +327,48 @@
 	<cfreturn true>
 </cffunction>
 
-<cffunction name="getInsertedIdentity" access="private" returntype="numeric" output="no" hint="I get the value of the identity field that was just inserted into the given table.">
+<cffunction name="getFieldSQL_Has" access="private" returntype="any" output="no">
+	<cfargument name="tablename" type="string" required="yes">
+	<cfargument name="field" type="string" required="yes">
+	<cfargument name="tablealias" type="string" required="no">
+	
+	<cfset var sField = getField(arguments.tablename,arguments.field)>
+	<cfset var dtype = getEffectiveDataType(arguments.tablename,sField.Relation.field)>
+	<cfset var aSQL = ArrayNew(1)>
+	<cfset var sAdvSQL = StructNew()>
+	<cfset var sJoin = StructNew()>
+	<cfset var sArgs = StructNew()>
+	<cfset var temp = "">
+	
+	<cfset ArrayAppend(aSQL,"ABS(")>
+	
+	<cfswitch expression="#dtype#">
+	<cfcase value="numeric">
+		<cfset ArrayAppend(aSQL,"IIF(")>
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+		<cfset ArrayAppend(aSQL," > 0,1,0)")>
+	</cfcase>
+	<cfcase value="string">
+		<cfset ArrayAppend(aSQL,"IIF(Len(")>
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+		<cfset ArrayAppend(aSQL,") IS NULL,0,1) > 0")>
+	</cfcase>
+	<cfcase value="date">
+		<cfset ArrayAppend(aSQL,"IIF(")>
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+		<cfset ArrayAppend(aSQL," IS NULL,0,1)")>
+	</cfcase>
+	<cfcase value="boolean">
+		<cfset ArrayAppend(aSQL, getFieldSelectSQL(tablename=arguments.tablename,field=sField.Relation['field'],tablealias=arguments.tablealias,useFieldAlias=false) )>
+	</cfcase>
+	</cfswitch>
+	
+	<cfset ArrayAppend(aSQL,")")>
+	
+	<cfreturn aSQL>	
+</cffunction>
+
+<cffunction name="getInsertedIdentity" access="private" returntype="string" output="no" hint="I get the value of the identity field that was just inserted into the given table.">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="identfield" type="string" required="yes">
 	

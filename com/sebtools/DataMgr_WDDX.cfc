@@ -1,32 +1,46 @@
-<!--- 2.2 Alpha 2 Dev 2 (Build 124) --->
-<!--- Last Updated: 2008-02-03 --->
+<!--- 2.0 Beta 1 Build 63 --->
+<!--- Last Updated: 2006-10-13 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for Simulated Database" hint="I manage simulated data interactions with a database.">
 
 <cffunction name="init" access="public" returntype="DataMgr" output="no" hint="I instantiate and return this object.">
 	<cfargument name="datasource" type="string" required="yes">
 	<cfargument name="database" type="string" required="no">
-	<cfargument name="username" type="string" required="no">
-	<cfargument name="password" type="string" required="no">
 	<cfargument name="rows" type="numeric" default="50">
+	
+	<cfset var filedata = "">
 	
 	<cfset variables.datasource = arguments.datasource>
 	
 	<cfset variables.rows = arguments.rows>
 	<cfset variables.tables = StructNew()><!--- Used to internally keep track of tables used by DataMgr --->
-	<cfset variables.tableprops = StructNew()><!--- Used to internally keep track of tables properties used by DataMgr --->
-	<cfset setCacheDate()><!--- Used to internally keep track caching --->
-	
 	<cfset variables.nocomparetypes = "CF_SQL_LONGVARCHAR"><!--- Don't run comparisons against fields of these cf_datatypes for queries --->
 	<cfset variables.dectypes = "CF_SQL_DECIMAL"><!--- Decimal types (shouldn't be rounded by DataMgr) --->
 	<cfset variables.aggregates = "avg,count,max,min,sum">
 	
-	<cfset variables.simdata = StructNew()>
-	<cfset variables.simrows = StructNew()>
+	<cfset variables.data = StructNew()>
 	
-<cfsavecontent variable="variables.greek">Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.</cfsavecontent>
+	<cfif FileExists(variables.datasource)>
+		<cffile action="READ" file="#variables.datasource#" variable="filedata">
+		<cfif IsWDDX(filedata)>
+			<cfwddx action="WDDX2CFML" input="#filedata#" output="variables.datasource">
+		<cfelse>
+			<cfthrow message="The file #variables.datasource# already exists and contains data other than WDDX data." type="DataMgr" errorcode="FileNotWDDX">
+		</cfif>
+	<cfelse>
+		<cfset writeData()>
+	</cfif>
 	
 	<cfreturn this>
+</cffunction>
+
+<cffunction name="writeData" access="private" returntype="void" output="no">
+	<cfset var wData = "">
+	
+	<cfwddx action="CFML2WDDX" input="#arguments.data#" output="wData" usetimezoneinfo="No">
+	
+	<cffile action="WRITE" file="#variables.datasource#" output="#wData#">
+	
 </cffunction>
 
 <cffunction name="addColumn" access="public" returntype="any" output="no" hint="I add a column to the given table">
@@ -36,42 +50,29 @@
 	<cfargument name="Length" type="numeric" default="50" hint="The ColdFusion SQL Datatype of the column.">
 	<cfargument name="Default" type="string" required="no" hint="The default value for the column.">
 	
-	<!--- <cfset var type = getDBDataType(arguments.CF_Datatype)>
+	<cfset var qRecords = getRecords(arguments.tablename)>
+	<cfset var aData = ArrayNew(1)>
 	
-	<cfif arguments.Length eq 0>
-		<cfset arguments.Length = 50>
-	</cfif> --->
+	<cfif ListFindNoCase(qRecords.ColumnList,arguments.columnname)>
+		<cfthrow message="The table #arguments.tablename# already has the column #arguments.columnname#." type="DataMgr" errorcode="ColumnExists">
+	</cfif>
 	
-</cffunction>
-
-<cffunction name="concat" access="public" returntype="string" output="no" hint="I return the SQL to concatenate the given fields with the given delimeter.">
-	<cfargument name="fields" type="string" required="yes">
-	<cfargument name="delimeter" type="string" default="">
-	
-	<cfset var colname = "">
-	<cfset var result = "">
-	
-	<cfloop index="colname" list="#arguments.fields#">
-		<cfif Len(result)>
-			<cfset result =  "#result# + '#arguments.delimeter#' + #colname#">
+	<cfloop query="qRecords">
+		<cfif StructKeyExists(arguments,"Default")>
+			<cfset ArrayAppend(aData,arguments.Default)>
 		<cfelse>
-			<cfset result = colname>
+			<cfset ArrayAppend(aData,"")>
 		</cfif>
 	</cfloop>
+	<cfset QueryAddColumn(qRecords, arguments.columnname, aData)>
 	
-	<cfreturn result>
+	<cfset variables.data[arguments.tablename] = qRecords>
+	
+	<cfset writeData()>
+	
 </cffunction>
 
-<cffunction name="concatFields" access="public" returntype="array" output="no" hint="I return the SQL to concatenate the given fields with the given delimeter.">
-	<cfargument name="tablename" type="string" required="yes">
-	<cfargument name="fields" type="string" required="yes">
-	<cfargument name="delimeter" type="string" default=",">
-	<cfargument name="tablealias" type="string" required="no">
-	
-	<!--- %%TODO: Add concatFields --->
-	
-	<cfreturn aSQL>
-</cffunction>
+<!--- %%HERE --->
 
 <cffunction name="createTable" access="public" returntype="string" output="no" hint="I take a table for which the structure has been loaded, and create the table in the database.">
 	<cfargument name="tablename" type="string" required="yes">
@@ -147,33 +148,7 @@
 	<cfargument name="tablename" type="string" required="yes" hint="The table from which to return a record.">
 	<cfargument name="data" type="struct" required="yes" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key. Every primary key field should be included.">
 	
-	<cfset var fields = getUpdateableFields(arguments.tablename)>
-	<cfset var pkfields = getPKFields(arguments.tablename)>
-	<cfset var i = 0><!--- A generic counter --->
-	<cfset var in = arguments.data>
-	<cfset var totalfields = 0><!--- count of fields --->
-	<cfset var qRecord = 0><!--- The record to return --->
-	<cfset var maxrows = 1>
-	
-	<!--- Figure count of fields --->
-	<cfloop index="i" from="1" to="#ArrayLen(pkfields)#" step="1">
-		<cfif StructKeyExists(in,pkfields[i].ColumnName) AND in[pkfields[i].ColumnName] NEQ 0>
-			<cfset totalfields = totalfields + 1>
-		</cfif>
-	</cfloop>
-	<cfloop index="i" from="1" to="#ArrayLen(fields)#" step="1">
-		<cfif StructKeyExists(in,fields[i].ColumnName)>
-			<cfset totalfields = totalfields + 1>
-		</cfif>
-	</cfloop>
-	
-	<!--- Make sure at least one field is passed in --->
-	<cfif totalfields eq 0>
-		<!--- <cfthrow message="The data argument of getRecord must contain at least one field from the #arguments.tablename# table. To get all records, use the getRecords method." type="DataMgr" errorcode="NeedWhereFields"> --->
-		<cfset maxrows = 0>
-	</cfif>
-	
-	<cfset qRecord = getRecords(tablename=arguments.tablename,data=arguments.data,maxrows=maxrows)><!--- The record to return --->
+	<cfset var qRecord = getRecords(tablename=arguments.tablename,data=arguments.data,maxrows=1)><!--- The record to return --->
 	
 	<cfreturn qRecord>
 </cffunction>
@@ -205,10 +180,6 @@
 		<cfelse>
 			<cfset arguments.maxrows = variables.rows>
 		</cfif>
-	</cfif>
-	
-	<cfif StructKeyExists(variables.simrows,arguments.tablename) AND arguments.maxrows GT variables.simrows[arguments.tablename]>
-		<cfset arguments.maxrows = variables.simrows[arguments.tablename]>
 	</cfif>
 	
 	<!--- If we have simulated data for this table --->
@@ -304,7 +275,7 @@
 
 <cffunction name="getStringTypes" access="public" returntype="string" output="no" hint="I return a list of datypes that hold strings / character values."><cfreturn ""></cffunction>
 
-<cffunction name="loadXML" access="public" returntype="void" output="no" hint="I add table/tables from XML and optionally create tables/columns as needed (I can also load data to a table upon its creation).">
+<cffunction name="loadXML" access="public" returntype="void" output="false" hint="I add table/tables from XML and optionally create tables/columns as needed (I can also load data to a table upon its creation).">
 	<cfargument name="xmldata" type="string" required="yes" hint="XML data of tables to load into DataMgr follows. Schema: http://www.bryantwebconsulting.com/cfc/DataMgr.xsd">
 	<cfargument name="docreate" type="boolean" default="false" hint="I indicate if the table should be created in the database if it doesn't already exist.">
 	<cfargument name="addcolumns" type="boolean" default="false" hint="I indicate if missing columns should be be created.">
@@ -366,7 +337,7 @@
 	<cfargument name="tablename" type="string" required="yes" hint="The table on which to update data.">
 	<cfargument name="data" type="struct" required="yes" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
 	
-	<cfreturn RandRange(1,variables.rows)>
+	<cfreturn Random(1,variables.rows)>
 </cffunction>
 
 <cffunction name="getCFDataType" access="public" returntype="string" output="no" hint="I return the cfqueryparam datatype from the database datatype.">
@@ -414,20 +385,10 @@
 	</cfif>
 	
 	<cfswitch expression="#field.Relation.type#">
-	<cfcase value="concat">
-		<cfloop index="temp" list="#field.Relation['fields']#">
-			<cfif Len(result)>
-				<cfset result = "#result##field.Relation['delimiter']##rowdata[temp]#">
-			<cfelse>
-				<cfset result = rowdata[temp]>
-			</cfif>
-			<!--- <cfset result = ListAppend(result,rowdata[temp],"#field.Relation['delimiter']#")> --->
-		</cfloop>
-	</cfcase>
 	<cfcase value="label">
 		<!--- get label from table where join field values match --->
 		<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
-		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"],maxrows=1)>
+		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
 		<cfset result = qRelatedRecords[field.Relation["field"]][1]>
 	</cfcase>
 	<cfcase value="list">
@@ -442,7 +403,7 @@
 			<!--- Using data from join table, get data from table --->
 			<cfloop index="temp" list="#joindata#">
 				<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
-				<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"],maxrows=1)>
+				<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
 				<cfset result = ListAppend(result,qRelatedRecords[field.Relation["field"]][1])>
 			</cfloop>
 		<cfelse>
@@ -457,7 +418,7 @@
 		<!--- get count from table where join field values match --->
 		<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
 		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
-		<cfset result = qRelatedRecords.RecordCount>
+		<cfset result = RecordCount(qRelatedRecords)>
 	</cfcase>
 	<cfcase value="max">
 		<!--- get the max value from table where join field values match --->
@@ -478,17 +439,6 @@
 		<cfloop query="qRelatedRecords">
 			<cfif qRelatedRecords[field.Relation["field"]][CurrentRow] lt result OR NOT Len(result)>
 				<cfset result = qRelatedRecords[field.Relation["field"]][CurrentRow]>
-			</cfif>
-		</cfloop>
-	</cfcase>
-	<cfcase value="sum">
-		<!--- get the max value from table where join field values match --->
-		<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
-		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
-		<cfset result = 0>
-		<cfloop query="qRelatedRecords">
-			<cfif isNumeric(qRelatedRecords[field.Relation["field"]][CurrentRow])>
-				<cfset result = result + qRelatedRecords[field.Relation["field"]][CurrentRow]>
 			</cfif>
 		</cfloop>
 	</cfcase>
@@ -538,7 +488,8 @@
 		</cfloop>
 		<cfloop index="i" from="1" to="#ArrayLen(rfields)#" step="1">
 			<cfset rowdata = QueryRowToStruct(qRecords,row)>
-			<cfset QuerySetCell(qRecords, rfields[i]["ColumnName"], getRelatedData(arguments.tablename,rfields[i],rowdata))>
+			<!--- %%TODO: Get this to work. --->
+			<!--- <cfset QuerySetCell(qRecords, rfields[i]["ColumnName"], getRelatedData(arguments.tablename,rfields[i],rowdata))> --->
 		</cfloop>
 		
 		<cfif Len(arguments.orderby)>
@@ -580,7 +531,7 @@
 	<cfcase value="CF_SQL_DECIMAL">
 		<cfset result = (RandRange(100,102400)/100)>
 	</cfcase>
-	<cfcase value="CF_SQL_FLOAT,CF_SQL_DOUBLE">
+	<cfcase value="CF_SQL_FLOAT">
 		<cfset result = (RandRange(100,102400)/100)>
 	</cfcase>
 	<cfcase value="CF_SQL_IDSTAMP">
@@ -615,7 +566,7 @@
 	<cfcase value="CF_SQL_VARCHAR">
 		<cfset result = ProperCase(Mid(variables.greek,RandRange(1,(Len(variables.greek)-mylength)),mylength))>
 	</cfcase>
-	<cfdefaultcase><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.field.CF_Datatype#'" errorcode="InvalidDataType"></cfdefaultcase>
+	<cfdefaultcase><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.CF_Datatype#'" errorcode="InvalidDataType"></cfdefaultcase>
 	</cfswitch>
 	
 	<cfreturn result>

@@ -4,7 +4,7 @@
 	
 	<!--- Set the build number for future upgrades --->
 	<cfset variables.Build = 16>
-	<cfset variables.Version = "1.0">
+	<cfset variables.Version = "1.0.1">
 	
 	<cfreturn this>
 </cffunction>
@@ -36,7 +36,7 @@
 			<field ColumnName="CategoryID" CF_DataType="CF_SQL_INTEGER" PrimaryKey="true" Increment="true" />
 			<field ColumnName="CategoryName" CF_DataType="CF_SQL_VARCHAR" Length="80" />
 			<field ColumnName="Rules">
-				<relation table="chkRules" type="list" field="RuleID" onDelete="Error"/>
+				<relation table="chkRules" type="list" field="RuleID" join-field="CategoryID" onDelete="Error"/>
 			</field>
 			<field ColumnName="NumRules">
 				<relation table="chkRules" type="count" field="RuleID" join-field="CategoryID"/>
@@ -55,10 +55,10 @@
 			<field ColumnName="ExtensionID" CF_DataType="CF_SQL_INTEGER" PrimaryKey="true" Increment="true" />
 			<field ColumnName="Extension" CF_DataType="CF_SQL_VARCHAR" Length="8" />
 			<field ColumnName="Rules">
-				<relation table="chkRules" type="list" field="RuleID" onDelete="Error"/>
+				<relation table="chkRules" type="list" field="RuleID" join-table="chkRules2Extensions" onDelete="Error"/>
 			</field>
 			<field ColumnName="NumRules">
-				<relation table="chkRules" type="count" field="RuleID" join-field="ExtensionID"/>
+				<relation table="chkRules" type="count" field="RuleID" join-table="chkRules2Extensions"/>
 			</field>
 		</table>
 		<table name="chkRules2Extensions">

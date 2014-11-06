@@ -1,5 +1,5 @@
-<!--- 0.1 Development1 Build 2 --->
-<!--- Last Updated: 006-09-20 --->
+<!--- 0.2 Development1 Build 3 --->
+<!--- Last Updated: 2007-08-30 --->
 <!--- Created by Steve Bryant 2006-09-18 --->
 <cfcomponent displayname="Data Synchronizer">
 
@@ -27,12 +27,16 @@
 	
 	<cfset var TableData = variables.DataMgr.getTableData()>
 	<cfset var i = 0>
+	<cfset var jj = 0>
 	<cfset var table = "">
 	<cfset var column = 0>
 	<cfset var qRecords = 0>
 	<cfset var col = "">
 	<cfset var fdata = StructNew()>
 	<cfset var fcol = StructNew()>
+	<cfset var fromtablelist = "">
+	<cfset var sortedtablelist = "">
+	<cfset var sDependencies = StructNew()>
 	
 	<!--- If no tables are indicated, get them all. --->
 	<cfif NOT Len(arguments.tables)>
@@ -49,21 +53,51 @@
 	
 	<!--- Look for foreign keys --->
 	<cfloop index="table" list="#arguments.tables#">
+		<cfset sDependencies[table] = "">
 		<cfloop index="i" from="1" to="#ArrayLen(TableData[table])#" step="1"><cfset column = TableData[table][i]>
 			<cfif StructKeyExists(column,"CF_DataType")><cfset col = column.ColumnName>
 				<cfset rtable = getRelatedTable(arguments.tables,table,column)>
 				<cfif Len(rtable)>
 					<cfset TableData[table][i]["rtable"] = rtable>
+					<!--- Make sure rtable is in depencies list --->
+					<cfif NOT ListFindNoCase(sDependencies[table],rtable)>
+						<cfset sDependencies[table] = ListAppend(sDependencies[table],rtable)>
+					</cfif>
 				</cfif>
 			</cfif>
 		</cfloop>
 	</cfloop>
+	
+	<cfscript>
+	fromtablelist = arguments.tables;
+	//Resort table list based on dependencies
+	while ( jj LTE ( ListLen(arguments.tables) * ListLen(arguments.tables) ) AND ( ListLen(sortedtablelist) LT ListLen(arguments.tables) ) ) {
+		jj = jj + 1;
+		for (i=1; i LTE ListLen(arguments.tables); i=i+1) {
+			table = ListGetAt(arguments.tables,i);
+			if ( Len(sDependencies[table]) EQ 0 OR isListInList(sDependencies[table],sortedtablelist) ) {
+				if ( NOT ListFindNoCase(sortedtablelist,table) ) {
+					sortedtablelist = ListAppend(sortedtablelist,table);
+				}
+				if ( ListFindNoCase(fromtablelist,table) ) {
+					fromtablelist = ListDeleteAt(fromtablelist,ListFindNoCase(fromtablelist,table));
+				}
+			}
+		}
+	}
+	arguments.tables = sortedtablelist;
+	</cfscript>
+	
+	<cfif jj GTE ( ListLen(arguments.tables) * ListLen(arguments.tables) )>
+		<cfthrow message="DataSynch encountered a bidirectional dependency that it was unable to resolve: Each of two tables were both dependent on each other (#fromtablelist#)." type="DataSynch" errorcode="CrossDependency">
+	</cfif>
 	
 <cfsavecontent variable="result"><cfoutput>
 <tables>
 <cfloop index="table" list="#arguments.tables#">
 	<!--- Verifying the table exists (shouldn't really be needed since we made sure to check for it above --->
 	<cfif StructKeyExists(TableData,table)>
+		<!--- Create the table --->
 		<table name="#table#">
 		<!--- Indicate all of the fields --->
 		<cfloop index="i" from="1" to="#ArrayLen(TableData[table])#" step="1"><cfset column = TableData[table][i]>
@@ -72,6 +106,11 @@
 			</cfif>
 		</cfloop>
 		</table>
+	</cfif>
+</cfloop>
+<cfloop index="table" list="#arguments.tables#">
+	<!--- Verifying the table exists (shouldn't really be needed since we made sure to check for it above --->
+	<cfif StructKeyExists(TableData,table)>
 		<!--- Now let's get all of the data (assuming we are asked to do so) --->
 		<cfif arguments.withdata>
 			<cfset qRecords = variables.DataMgr.getRecords(table)>
@@ -110,7 +149,8 @@
 </tables>
 </cfoutput></cfsavecontent>
 
-	<cfreturn XmlHumanReadable(result)>
+	<!--- <cfreturn XmlHumanReadable(result)> --->
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="synchTables" access="public" returntype="void" output="no" hint="I synchronize the given tables.">
@@ -241,6 +281,39 @@
 	
 	<cfreturn result>
 </cffunction>
+
+<cfscript>
+/**
+ * Checks is all elements of a list X is found in a list Y.
+ * v2 by Raymond Camden
+ * v3 idea by Bill King
+ * 
+ * @param l1 	 The first list. (Required)
+ * @param l2 	 The second list. UDF checks to see if all of l1 is in l2. (Required)
+ * @param delim1 	 List delimiter for l1. Defaults to a comma. (Optional)
+ * @param delim2 	 List delimiter for l2. Defaults to a comma. (Optional)
+ * @param matchany 	 If true, UDF returns true if at least one item in l1 exists in l2. Defaults to false. (Optional)
+ * @return Returns a boolean. 
+ * @author Daniel Chicayban (daniel@chicayban.com.br) 
+ * @version 3, August 28, 2003 
+ */
+function isListInList(l1,l2) {
+	var delim1 = ",";
+	var delim2 = ",";
+	var i = 1;
+	var matchany = false;
+	
+	if(arrayLen(arguments) gte 3) delim1 = arguments[3];
+	if(arrayLen(arguments) gte 4) delim2 = arguments[4];
+	if(arrayLen(arguments) gte 5) matchany = arguments[5];
+	
+	for(i=1; i lte listLen(l1,delim1); i=i+1) {
+		if(matchany and listFind(l2,listGetAt(l1,i,delim1),delim2)) return true;
+		if(not matchany and not listFind(l2,listGetAt(l1,i,delim1),delim2)) return false;
+	}
+	return true;
+}
+</cfscript>
 
 <cfscript>
 /**

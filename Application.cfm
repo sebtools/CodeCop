@@ -2,7 +2,6 @@
 <cfsetting showdebugoutput="NO">
 
 <cfinclude template="_logic/settings.cfm">
-<cfset request.CCrootpath = GetDirectoryFromPath(GetCurrentTemplatePath())>
 <cfset UploadPath = ExpandPath("sys/custom/")><!--- Get the upload path --->
 
 
@@ -25,7 +24,7 @@ In CF7+, this gives us variables.Factory which includes the Admin API (so we can
 	<!--- So that I can use the cfapplication from the CF Admin without worrying about stomping all over variables that other programs might need. --->
 	<cfset Application["CodeCop"] = StructNew()>
 	<cfset Application["CodeCop"].InstallSQL = "">
-	<cfset Application["CodeCop"].ConfigSite = CreateObject("component","com.sebtools.Config").init(CGI,request.CCrootpath)>
+	<cfset Application["CodeCop"].ConfigSite = CreateObject("component","com.sebtools.Config").init(CGI,GetDirectoryFromPath(GetCurrentTemplatePath()))>
 	<cfset Application["CodeCop"].ConfigApp = CreateObject("component","sys.Config_CodeCop").init()>
 	
 	<cfset TempDataMgr = CreateObject("component","com.sebtools.DataMgr").init("")>
@@ -37,7 +36,7 @@ In CF7+, this gives us variables.Factory which includes the Admin API (so we can
 		</cfif>
 	</cfinvoke>
 	<!--- Load the settings component to handle settings for CodeCop --->
-	<cfset Application["CodeCop"].SettingsMgr = CreateObject("component","sys.Settings").init(Application["CodeCop"].DatasourceMgr,ExpandPath("config.cfm"))>
+	<cfset Application["CodeCop"].SettingsMgr = CreateObject("component","sys.Settings").init(Application["CodeCop"].DatasourceMgr,ExpandPath("../config.cfm"))>
 </cfif>
 
 <cfset request.Paths = Application["CodeCop"].ConfigSite.getPaths()>
@@ -46,6 +45,16 @@ In CF7+, this gives us variables.Factory which includes the Admin API (so we can
 
 <!--- Either load the components or take the user to the settings page so they can provide the needed info. --->
 <cfif NOT ListFindNoCase(CGI.SCRIPT_NAME,"install","/") AND NOT ListLast(CGI.SCRIPT_NAME,"/") EQ "about.cfm">
+	<!--- In CF8 admin, create datasource and menu option --->
+	<cfif CFVersionMajor GTE 8 AND isInAdmin>
+		<cfset ds = createObject("component","cfide.adminAPI.datasource")>
+		<cfset DerbyCFC = CreateObject("component","sys.derbyCFC").init(ds=ds)>
+		<cfset DerbyCFC.createIfNotExists(name="CodeCop",enable_clob=1,enable_blob=1)>
+		<cfset Application.CodeCop.SettingsMgr.saveSettings(datasource="CodeCop",database="Derby")>
+		<cfset addAdminMenu()>
+		<cfset request.CodeCop_LoadAdminMenu = true>
+		<cfset SettingsData = Application["CodeCop"].SettingsMgr.getSettings()><!--- Get settings data --->
+	</cfif>
 	<cfif Len(Trim(SettingsData.datasource)) AND Len(Trim(SettingsData.database))>
 		<!--- If url indicates initialize or if CodeCop hasn't already been successfully initialized, initilize it. --->
 		<cfif URL.reinit OR NOT ( StructKeyExists(Application["CodeCop"],"installed") AND isBoolean(Application["CodeCop"].installed) AND Application["CodeCop"].installed ) >
@@ -84,7 +93,9 @@ I could have loaded the default and then used switchLayout(), but this is a litt
 This allows CodeCop to look right in the CF6 or Cf7 admin and have a separate look when run on its own.
 --->
 <cfif isInAdmin>
-	<cfif CFVersionFull gte 7>
+	<cfif CFVersionFull GTE 8>
+		<cfset layout = CreateObject("component","layouts.CFAdmin8").init(CGI.SCRIPT_NAME,Application["CodeCop"].ConfigSite)>
+	<cfelseif CFVersionFull EQ 7>
 		<cfset layout = CreateObject("component","layouts.CFAdmin7").init(CGI.SCRIPT_NAME,Application["CodeCop"].ConfigSite)>
 	<cfelse>
 		<cfset layout = CreateObject("component","layouts.CFAdmin6").init(CGI.SCRIPT_NAME,Application["CodeCop"].ConfigSite)>
