@@ -104,7 +104,7 @@
 		<cfthrow message="DataSynch encountered a bidirectional dependency that it was unable to resolve: Each of two tables were both dependent on each other (#fromtablelist#)." type="DataSynch" errorcode="CrossDependency">
 	</cfif>
 	
-<cfsavecontent variable="result"><cfoutput>
+<cfsavecontent variable="result"><cfoutput><?xml version="1.0" encoding="utf-8"?>
 <tables>
 <cfloop index="table" list="#arguments.tables#">
 	<!--- Verifying the table exists (shouldn't really be needed since we made sure to check for it above --->
@@ -140,7 +140,7 @@
 											</field>
 										</cfif>
 									<cfelse>
-										<field name="#col#" value="#XmlFormat(qRecords[col][CurrentRow])#" />
+										<field name="#col#" value="#XmlCleanString(qRecords[col][CurrentRow])#" />
 									</cfif>
 								</cfif>
 							</cfloop>
@@ -156,6 +156,29 @@
 
 	<!--- <cfreturn XmlHumanReadable(result)> --->
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="XmlCleanString" access="public" returntype="string" output="no" hint="I return a clean version (stripped of MS-Word characters) of the given structure.">
+	<cfargument name="string" type="string" required="yes">
+	
+	<cfscript>
+	// Replace the special characters that Microsoft uses.
+	arguments.string = Replace(arguments.string, Chr(8216), Chr(39), "ALL");// apostrophe / single-quote
+	arguments.string = Replace(arguments.string, Chr(8217), Chr(39), "ALL");// apostrophe / single-quote
+	arguments.string = Replace(arguments.string, Chr(8220), Chr(34), "ALL");// quotes
+	arguments.string = Replace(arguments.string, Chr(8221), Chr(34), "ALL");// quotes
+	arguments.string = Replace(arguments.string, Chr(8211), "-", "ALL");// dashes
+	arguments.string = Replace(arguments.string, Chr(8212), "-", "ALL");// dashes
+	arguments.string = Replace(arguments.string, Chr(8213), "-", "ALL");// dashes
+	arguments.string = Replace(arguments.string, Chr(8230), "...", "ALL");
+	arguments.string = Replace(arguments.string, "“", Chr(34), "ALL");
+	arguments.string = Replace(arguments.string, "”", Chr(34), "ALL");
+	
+	arguments.string = XmlFormat(arguments.string);
+	//arguments.string = CreateObject('java', 'org.apache.commons.lang.StringEscapeUtils').escapeXml(arguments.string); 
+	</cfscript>
+	
+	<cfreturn arguments.string>
 </cffunction>
 
 <cffunction name="synchTables" access="public" returntype="void" output="no" hint="I synchronize the given tables.">

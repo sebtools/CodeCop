@@ -1,7 +1,7 @@
-<!--- 2.2 RC1 Dev1 (Build 144) --->
-<!--- Last Updated: 2008-12-19 --->
+<!--- 2.5.4 (Build 176) --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Created by Beth Bowden and Steve Bryant 2007-01-14 --->
-<cfcomponent extends="DataMgr" displayname="Data Manager for Oracle" hint="I manage data interactions with the Oracle database. I can be used to handle inserts/updates.">
+<cfcomponent extends="DataMgr" displayname="Data Manager for Oracle" hint="I manage data interactions with the Oracle database.">
 
 <cffunction name="getDatabase" access="public" returntype="string" output="no" hint="I return the database platform being used (Access,MS SQL,MySQL etc).">
 	<cfreturn "Oracle">
@@ -104,8 +104,8 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 		<cfset arguments.tablealias = arguments.tablename>
 	</cfif>
 	
-	<cfloop index="colname" list="#arguments.fields#">
-		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=colname,tablealias=arguments.tablealias,useFieldAlias=false)>
+	<cfloop index="col" list="#arguments.fields#">
+		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=col,tablealias=arguments.tablealias,useFieldAlias=false)>
 		<cfif ArrayLen(aSQL)>
 			<cfset ArrayAppend(aSQL," || '#arguments.delimeter#' || ")>
 		</cfif>
@@ -149,14 +149,14 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<cfargument name="tablename" type="string" required="yes" />
 
 	<cfscript>
-		var qStructure   = 0;
-		var qPrimaryKeys = 0;
-		var qIndices     = 0;
-		var TableData    = ArrayNew(1);
-		var tmpStruct    = StructNew();
-		var PrimaryKeys  = "";
-		var sqlarray     = ArrayNew(1);
-
+	var qStructure   = 0;
+	var qPrimaryKeys = 0;
+	var qIndices     = 0;
+	var TableData    = ArrayNew(1);
+	var tmpStruct    = StructNew();
+	var PrimaryKeys  = "";
+	var sqlarray     = ArrayNew(1);
+	
   	var qSequences = 0;
   	var Sequences = "";
 
@@ -227,30 +227,26 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 		<cfset tmpStruct["CF_DataType"] = getCFDataType(Type) />
 		<cfif ListFindNoCase(PrimaryKeys,Field)>
 			<cfset tmpStruct["PrimaryKey"] = true />
-		<cfelse>
-			<cfset tmpStruct["PrimaryKey"] = false />
 		</cfif>
 	  <!--- @@Note: Oracle has no equivalent to autoincrement or  identity  --->
 		<cfset tmpStruct["Increment"] = false>
 		<cfif   Len(MaxLength)
-        AND isNumeric(MaxLength)
-        AND NOT tmpStruct["CF_DataType"] eq "CF_SQL_LONGVARCHAR">
+	        AND isNumeric(MaxLength)
+    	    AND tmpStruct["CF_DataType"] NEQ "CF_SQL_LONGVARCHAR"
+		>
 			<cfset tmpStruct["length"] = MaxLength />
 		</cfif>
 		<cfif isBoolean(Trim(AllowNulls))>
 			<cfset tmpStruct["AllowNulls"] = Trim(AllowNulls)/>
-		<cfelse>
-			<cfset tmpStruct["AllowNulls"] = true />
 		</cfif>
 		<cfset tmpStruct["Precision"] = Precision />
 		<cfset tmpStruct["Scale"]     = Scale />
 		<cfif Len(Default)>
 			<cfset tmpStruct["Default"] = Default />
 		</cfif>
-		<cfset tmpStruct["Special"] = "" />
 
 		<cfif Len(tmpStruct.CF_DataType)>
-			<cfset ArrayAppend(TableData,StructCopy(tmpStruct))>
+			<cfset ArrayAppend(TableData,adjustColumnArgs(tmpStruct))>
 		</cfif>
 	</cfoutput>
 
@@ -293,7 +289,7 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<!--- long --->
 	<!---   @@Note: bfile  not supported --->
 	<cfelseif compareNocase(arguments.type, "blob") is 0>
-		<cfset result = "CF_SQL_BINARY" />
+		<cfset result = "CF_SQL_BLOB" />
 	<cfelseif compareNocase(arguments.type, "clob") is 0>
 		<cfset result = "CF_SQL_LONGVARCHAR" />
 	<cfelseif compareNocase(arguments.type, "nclob") is 0>
@@ -301,9 +297,9 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<cfelseif compareNocase(arguments.type, "long") is 0>
 		<cfset result = "CF_SQL_LONGVARCHAR" />
    <cfelseif compareNocase(arguments.type, "long raw") is 0>
-		<cfset result = "CF_SQL_BINARY" />
+		<cfset result = "CF_SQL_BLOB" />
 	<cfelseif compareNocase(arguments.type, "raw") is 0>
-		<cfset result = "CF_SQL_BINARY" />
+		<cfset result = "CF_SQL_BLOB" />
 
 	<!--- numerics --->
 	<cfelseif compareNocase(arguments.type, "float") is 0>
@@ -415,6 +411,10 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 	<cfreturn qIndexes>
 </cffunction>
 
+<cffunction name="dbHasOffset" access="private" returntype="boolean" output="no" hint="I indicate if the current database natively supports offsets">
+	<cfreturn true>
+</cffunction>
+
 <cffunction name="getFieldSQL_Has" access="private" returntype="any" output="no">
 	<cfargument name="tablename" type="string" required="yes">
 	<cfargument name="field" type="string" required="yes">
@@ -511,18 +511,29 @@ CREATE OR REPLACE TRIGGER #escape("BI_#arguments.tablename#")# #lf#  before inse
 
 <cffunction name="getMaxRowsPrefix" access="public" returntype="string" output="no" hint="I get the SQL before the field list in the select statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
+	<cfargument name="offset" type="numeric" default="0">
+	
 	<cfreturn " ">
 </cffunction>
 
 <cffunction name="getMaxRowsSuffix" access="public" returntype="string" output="no" hint="I get the SQL before the field list in the select statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
+	<cfargument name="offset" type="numeric" default="0">
+	
 	<cfreturn "">
 </cffunction>
 
 <cffunction name="getMaxRowsWhere" access="public" returntype="string" output="no" hint="I get the SQL in the where statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
+	<cfargument name="offset" type="numeric" default="0">
 	
-	<cfreturn "rownum <= #arguments.maxrows# ">
+	<cfset var result = "rownum <= #arguments.maxrows#">
+	
+	<cfif arguments.offset>
+		<cfset result = "( #result# AND rownum > #arguments.offset# )">
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 </cfcomponent>

@@ -1,10 +1,10 @@
 <!---
-1.0 RC4 Dev 1 (Build 113)
-Last Updated: 2008-11-26
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebform-basics.cfm?version=1.0
 ---><cfset TagName = "cf_sebSubForm"><cfset ParentTag = "cf_sebForm">
 <cfif NOT isDefined("ThisTag.ExecutionMode") OR NOT ListFindNoCase(GetBaseTagList(), ParentTag)><cfthrow message="&lt;#TagName#&gt; must be called as a custom tag between &lt;#ParentTag#&gt; and &lt;/#ParentTag#&gt;" type="cftag"></cfif>
 
@@ -14,7 +14,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 	<cfassociate basetag="#ParentTag#" datacollection="subforms">
 	<cfparam name="attributes.tablename" default="">
 	<cfparam name="attributes.query" default="">
-	<cfparam name="attributes.pkfield">
+	<cfparam name="attributes.pkfield" default="">
 	<cfparam name="attributes.pktype" default="">
 	<cfparam name="attributes.fkfield" default="">
 	<cfparam name="attributes.label" default="">
@@ -28,6 +28,66 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 	
 	<cfset ParentData = getBaseTagData("cf_sebForm")>
 	<cfset ParentAtts = ParentData.attributes>
+	
+	<!--- Get form defaults from component --->
+	<cfif
+			isDefined("attributes.CFC_Component")
+		AND (
+					StructKeyExists(attributes.CFC_Component,"getMetaStruct")
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "_framework.PageController"
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Master"
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Records"
+			)
+	>
+		<cftry>
+			<cfset sCompMeta = attributes.CFC_Component.getMetaStruct()>
+			<cfif isDefined("sCompMeta") AND isStruct(sCompMeta)>
+				<cfif StructKeyExists(sCompMeta,"arg_pk") AND Len(sCompMeta.arg_pk) AND NOT Len(attributes.pkfield)>
+					<cfset attributes.pkfield = sCompMeta.arg_pk>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"method_save") AND Len(sCompMeta.method_save) AND NOT isDefined("attributes.CFC_Method")>
+					<cfset attributes.CFC_Method = sCompMeta.method_save>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"method_gets") AND Len(sCompMeta.method_gets) AND NOT isDefined("attributes.CFC_GetMethod")>
+					<cfset attributes.CFC_GetMethod = sCompMeta.method_gets>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"method_delete") AND Len(sCompMeta.method_delete) AND NOT isDefined("attributes.CFC_DeleteMethod")>
+					<cfset attributes.CFC_DeleteMethod = sCompMeta.method_delete>
+				</cfif>
+				<cfif StructKeyExists(sCompMeta,"catch_types") AND Len(sCompMeta.catch_types) AND NOT ListFindNoCase(attributes.CatchErrTypes,sCompMeta.catch_types)>
+					<cfset ParentAtts.CatchErrTypes = ListAppend(ParentAtts.CatchErrTypes,sCompMeta.catch_types)>
+				</cfif>
+			</cfif>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+	</cfif>
+	
+	<!--- Get field defaults from component --->
+	<cfif
+			isDefined("attributes.CFC_Component")
+		AND (
+					StructKeyExists(attributes.CFC_Component,"getFieldsStruct")
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "_framework.PageController"
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Master"
+				OR	getMetaData(attributes.CFC_Component).extends.name CONTAINS "Records"
+			)
+	>
+		<cftry>
+			<cfset attributes.sFields = attributes.CFC_Component.getFieldsStruct(transformer="sebField")>
+			<cfset StructAppend(ParentAtts.sFields,attributes.sFields,"no")>
+			<!--- If component has getFieldStruct, make sure to catch "Master" errors --->
+			<cfif NOT ListFindNoCase(ParentAtts.CatchErrTypes,"Master")>
+				<cfset ParentAtts.CatchErrTypes = ListAppend(ParentAtts.CatchErrTypes,"Master")>
+			</cfif>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+	</cfif>
+	
+	<cfif NOT Len(Trim(attributes.fkfield))>
+		<cfset attributes.fkfield = ParentAtts.pkfield>
+	</cfif>
 	
 	<cfif NOT ( Len(attributes.tablename) OR Len(attributes.query) OR ( isDefined("attributes.CFC_Component") AND isDefined("attributes.CFC_GetMethod") ) )>
 		<cfthrow message="&lt;#TagName#&gt;: tablename, query attribute, or CFC must be provided in order to use &lt;#TagName#&gt;" type="cftag">
@@ -98,7 +158,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 	RecordFields = ArrayNew(1);
 	AddFields = ArrayNew(1);
 	if ( isDefined("ThisTag.qfields") ) {
-		sFields = Duplicate(ThisTag.qfields);
+		aFields = Duplicate(ThisTag.qfields);
 	}
 	/*
 	tmpOutput = "";
@@ -160,9 +220,11 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 			<cfcatch><cfthrow message="&lt;#TagName#&gt;: Error running &lt;cf_dbchanges&gt;. Make sure that the tag is installed in the same directory as &lt;#TagName#&gt;" type="cftag"></cfcatch>
 		</cftry>
 	</cfif>
-	
+	<cfif ParentAtts.format EQ "table">
+	<tr><td colspan="2">
+	</cfif>
 	<!---  If this subform tag has qfield tag below it --->
-	<cfif isDefined("sFields") AND isArray(sFields)>
+	<cfif isDefined("aFields") AND isArray(aFields)>
 		<cfif attributes.cols gt 1><table><tr></cfif>
 		<!---  Loop through existing records --->
 		<cfloop index="j" from="1" to="#qsubdata.RecordCount#" step="1">
@@ -183,10 +245,12 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 				</cfoutput>
 			</cfif>
 			<cfset numFieldsets = numFieldsets + 1>
-			<cfloop index="i" from="1" to="#ArrayLen(sFields)#" step="1">
+			<cfif ParentAtts.format EQ "table"><table></cfif>
+			<cfloop index="i" from="1" to="#ArrayLen(aFields)#" step="1">
 				<cfscript>
 				prefix = "#attributes.prefix#e#qsubdata[attributes.pkfield][j]#_";
-				RecordFields[j][i] = Duplicate(sFields[i]);
+				RecordFields[j][i] = Duplicate(aFields[i]);
+				RecordFields[j][i].dbfield = "#RecordFields[j][i].fieldname#";
 				RecordFields[j][i].fieldname = "#prefix##RecordFields[j][i].fieldname#";
 				if ( StructKeyExists(RecordFields[j][i],"subquery") AND Len(RecordFields[j][i].subquery) ) {
 					if ( StructKeyExists(Caller,RecordFields[j][i].subquery) AND isQuery(Caller[RecordFields[j][i].subquery]) ) {
@@ -214,6 +278,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 					<cf_sebField attributeCollection="#RecordFields[j][i]#"><cfoutput>#RecordFields[j][i].GeneratedContent#</cfoutput></cf_sebField>
 				</cfif>
 			</cfloop>
+			<cfif ParentAtts.format EQ "table"></table></cfif>
 			<cfif attributes.useFieldset>
 				</fieldset>
 			</cfif>
@@ -227,17 +292,18 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 			AddField = ArrayNew(1);
 			</cfscript>
 			<cfsavecontent variable="AddOne"><cfif attributes.cols gt 1><td></cfif><cfif attributes.useFieldset><fieldset></cfif>
-				<cfloop index="i" from="1" to="#ArrayLen(sFields)#" step="1">
-					<cfif sFields[i].type neq "delete">
+				<cfloop index="i" from="1" to="#ArrayLen(aFields)#" step="1">
+					<cfif aFields[i].type neq "delete">
 						<cfscript>
-						AddField[i] = Duplicate(sFields[i]);
+						AddField[i] = Duplicate(aFields[i]);
+						AddField[i].dbfield = "#AddField[i].fieldname#";
 						AddField[i].fieldname = "#prefix##AddField[i].fieldname#";
 						if ( StructKeyExists(AddField[i],"subquery") AND Len(AddField[i].subquery) ) {
 							if ( StructKeyExists(Caller,AddField[i].subquery) AND isQuery(Caller[AddField[i].subquery]) ) {
 								Variables[AddField[i].subquery] = Caller[AddField[i].subquery];
 							}
 						}
-						if ( Len(sFields[i].id) ) {
+						if ( Len(aFields[i].id) ) {
 							AddField[i].id = "#prefix##AddField[i].id#";
 						}
 						if ( isDefined("form.#prefix##AddField[i].fieldname#") AND Len(Form["#prefix##AddFields[j][i].fieldname#"]) ) {
@@ -250,6 +316,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 						AddField[i].isInSubFormCT = true;
 						</cfscript>
 						<cfif showField>
+							<cfif ParentAtts.format EQ "table"><table></cfif>
 							<cfif StructKeyExists(AddField[i], "qsubfields") AND isArray(AddField[i].qsubfields)>
 								<cf_sebField attributeCollection="#AddField[i]#">
 								<cfloop index="k" from="1" to="#ArrayLen(AddField[i].qsubfields)#" step="1">
@@ -259,6 +326,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 							<cfelse>
 								<cf_sebField attributeCollection="#AddField[i]#"><cfoutput>#AddField[i].GeneratedContent#</cfoutput></cf_sebField>
 							</cfif>
+							<cfif ParentAtts.format EQ "table"></table></cfif>
 						</cfif>				
 					</cfif>
 				</cfloop>
@@ -282,6 +350,10 @@ http://www.bryantwebconsulting.com/cftags/cf_sebSubForm.htm
 		<cfif attributes.cols gt 1></tr></table></cfif>
 	</cfif>
 	<!--- /If this subform tag has sebfield tag below it --->
+	<cfif ParentAtts.format EQ "table">
+	</td><tr>
+	</cfif>
+
 	<!--- || HANDLE FORM SUBMISSION || --->
 	<cfif isDefined("form.sebformsubmit") AND form.sebformsubmit eq Hash(ParentAtts.formname)>
 		<!--- || CHECK FOR DELETIONS || --->

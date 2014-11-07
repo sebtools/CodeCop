@@ -1,5 +1,5 @@
-<!--- 2.2 RC1 Dev1 (Build 144) --->
-<!--- Last Updated: 2008-12-19 --->
+<!--- 2.5.3 (Build 175) --->
+<!--- Last Updated: 2013-12-11 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
 <cfcomponent extends="DataMgr" displayname="Data Manager for Simulated Database" hint="I manage simulated data interactions with a database.">
 
@@ -12,6 +12,7 @@
 	
 	<cfset variables.datasource = arguments.datasource>
 	
+	<cfset variables.dbprops = getProps()>
 	<cfset variables.rows = arguments.rows>
 	<cfset variables.tables = StructNew()><!--- Used to internally keep track of tables used by DataMgr --->
 	<cfset variables.tableprops = StructNew()><!--- Used to internally keep track of tables properties used by DataMgr --->
@@ -20,6 +21,8 @@
 	<cfset variables.nocomparetypes = "CF_SQL_LONGVARCHAR"><!--- Don't run comparisons against fields of these cf_datatypes for queries --->
 	<cfset variables.dectypes = "CF_SQL_DECIMAL"><!--- Decimal types (shouldn't be rounded by DataMgr) --->
 	<cfset variables.aggregates = "avg,count,max,min,sum">
+	
+	<cfset variables.UUID = CreateUUID()>
 	
 	<cfset variables.simdata = StructNew()>
 	<cfset variables.simrows = StructNew()>
@@ -136,6 +139,10 @@
 	<cfreturn (variables.rows + 1)>
 </cffunction>
 
+<cffunction name="getNowSQL" access="public" returntype="string" output="no" hint="I return the SQL for the current date/time.">
+	<cfreturn "">
+</cffunction>
+
 <cffunction name="getPKFromData" access="public" returntype="string" output="no" hint="I get the primary key of the record matching the given data.">
 	<cfargument name="tablename" type="string" required="yes" hint="The table from which to return a primary key.">
 	<cfargument name="fielddata" type="struct" required="yes" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
@@ -184,6 +191,11 @@
 	<cfargument name="orderBy" type="string" default="">
 	<cfargument name="maxrows" type="numeric">
 	<cfargument name="fieldlist" type="string" default="" hint="A list of fields to return. If left blank, all fields will be returned.">
+	<cfargument name="function" type="string" default="" hint="A function to run against the results.">
+	<cfargument name="advsql" type="struct" hint="A structure of sqlarrays for each area of a query (SELECT,FROM,WHERE,ORDER BY).">
+	<cfargument name="filters" type="array">
+	<cfargument name="offset" type="numeric" default="0">
+	<cfargument name="FunctionAlias" type="string" required="false" hint="An alias for the column returned by a function (only if function argument is used).">
 	
 	<cfset var qRecords = 0><!--- The recordset to return --->
 	<cfset var fields = getUpdateableFields(arguments.tablename)><!--- non primary-key fields in table --->
@@ -197,6 +209,11 @@
 	<cfset var field = 0>
 	<cfset var isMatch = true>
 	<cfset var rowdata = StructNew()>
+	<cfset var aEmptyRows = 0>
+	
+	<cfif NOT StructKeyExists(arguments,"FunctionAlias")>
+		<cfset arguments.FunctionAlias = "DataMgr_FunctionResult">
+	</cfif>
 	
 	<!--- Set a value for maxrows if none is given --->
 	<cfif NOT StructKeyExists(arguments,"maxrows")>
@@ -233,11 +250,17 @@
 		
 		<cfset qSimData = variables.simdata[arguments.tablename]>
 		
+		<cfset aEmptyRows = ArrayNew(1)>
+		<cfset ArrayAppend(aEmptyRows,qSimData.RecordCount)>
+		
 		<!--- Set relation field values --->
 		<cfloop index="col" list="#columnlist#">
 			<cfset field = getField(arguments.tablename,col)>
 			<!--- If the field is a relation field, loop over the query and set the value --->
 			<cfif StructKeyExists(field,"Relation")>
+				<cfif NOT ListFindNoCase(qSimData.ColumnList,col)>
+					<cfset QueryAddColumn(qSimData,col,"VarChar",aEmptyRows)>
+				</cfif>
 				<cfloop query="qSimData">
 					<cfset rowdata = QueryRowToStruct(qSimData,CurrentRow)>
 					<cfset QuerySetCell(qSimData, col, getRelatedData(arguments.tablename,field,rowdata),CurrentRow)>
@@ -308,6 +331,13 @@
 		</cfquery>
 	</cfif>
 	
+	<cfif Len(arguments.Function)>
+		<cfquery name="qRecords" dbtype="query">
+		SELECT		#arguments.Function#(<cfif Len(arguments.fieldlist)>#columnlist#<cfelse>*</cfif>) AS #arguments.FunctionAlias#
+		FROM		qRecords
+		</cfquery>
+	</cfif>
+	
 	<cfreturn qRecords>
 </cffunction>
 
@@ -316,6 +346,17 @@
 </cffunction>
 
 <cffunction name="getStringTypes" access="public" returntype="string" output="no" hint="I return a list of datypes that hold strings / character values."><cfreturn ""></cffunction>
+
+<cffunction name="hasRecords" access="public" returntype="boolean" output="no">
+	<cfargument name="tablename" type="string" required="yes" hint="The table from which to return a record.">
+	<cfargument name="data" type="any" required="no" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
+	<cfargument name="advsql" type="struct" hint="A structure of sqlarrays for each area of a query (SELECT,FROM,WHERE,ORDER BY).">
+	<cfargument name="filters" type="array">
+	
+	<cfset var qRecords = getRecords(argumentCollection=Arguments)>
+	
+	<cfreturn (qRecords.RecordCount GT 0)>
+</cffunction>
 
 <cffunction name="loadXML" access="public" returntype="void" output="no" hint="I add table/tables from XML and optionally create tables/columns as needed (I can also load data to a table upon its creation).">
 	<cfargument name="xmldata" type="string" required="yes" hint="XML data of tables to load into DataMgr follows. Schema: http://www.bryantwebconsulting.com/cfc/DataMgr.xsd">
@@ -375,6 +416,65 @@
 	
 </cffunction>
 
+<cffunction name="setColumn" access="public" returntype="any" output="no" hint="I set a column in the given table">
+	<cfargument name="tablename" type="string" required="yes" hint="The name of the table to which a column will be added.">
+	<cfargument name="columnname" type="string" required="yes" hint="The name of the column to add.">
+	<cfargument name="CF_Datatype" type="string" required="no" hint="The ColdFusion SQL Datatype of the column.">
+	<cfargument name="Length" type="numeric" default="0" hint="The ColdFusion SQL Datatype of the column.">
+	<cfargument name="Default" type="string" required="no" hint="The default value for the column.">
+	<cfargument name="Special" type="string" required="no" hint="The special behavior for the column.">
+	<cfargument name="Relation" type="struct" required="no" hint="Relationship information for this column.">
+	<cfargument name="PrimaryKey" type="boolean" required="no" hint="Indicates whether this column is a primary key.">
+	<cfargument name="AllowNulls" type="boolean" default="true">
+	<cfargument name="useInMultiRecordsets" type="boolean" default="true">
+	
+	<cfset var FieldIndex = 0>
+	<cfset var aTable = 0>
+	
+	<cfset var sArgs = convertColumnAtts(argumentCollection=arguments)>
+	
+	<cfif NOT ( StructKeyExists(arguments,"dbfields") AND Len(arguments.dbfields) )>
+		<cfset arguments.dbfields = getDBFieldList(sArgs.tablename)>
+	</cfif>
+	
+	<cfset FieldIndex = getColumnIndex(arguments.tablename,arguments.columnname)>
+	
+	<!--- Add the field to DataMgr if DataMgr doesn't know about the field --->
+	<cfif NOT FieldIndex>
+		<cfset ArrayAppend(variables.tables[arguments.tablename], sArgs)>
+		<cfset FieldIndex = ArrayLen(variables.tables[arguments.tablename])>
+	</cfif>
+	<cfset aTable = variables.tables[arguments.tablename]>
+	
+	<cfif StructKeyExists(sArgs,"Special") AND Len(sArgs.Special)>
+		<cfset aTable[FieldIndex]["Special"] = sArgs.Special>
+	</cfif>
+	<cfif StructKeyExists(sArgs,"Relation")>
+		<cfif
+				StructKeyExists(sArgs["Relation"],"type")
+			AND	sArgs["Relation"].type EQ "list"
+			AND	StructKeyExists(sArgs,"OtherField")
+			AND	NOT StructKeyExists(sArgs["Relation"],"other-field")
+		>
+			<cfset sArgs["Relation"]["other-field"] = sArgs["OtherField"]>
+		</cfif>
+		<!--- If the field exists but a relation is passed, set the relation --->
+		<!---<cfset aTable[FieldIndex]["Relation"] = expandRelationStruct(sArgs.Relation,aTable[FieldIndex])>--->
+		<cfset aTable[FieldIndex]["Relation"] = sArgs.Relation>
+	</cfif>
+	<cfif StructKeyExists(sArgs,"PrimaryKey") AND isBoolean(sArgs.PrimaryKey) AND sArgs.PrimaryKey>
+		<!--- If the field exists but a primary key is passed, set the primary key --->
+		<cfset aTable[FieldIndex]["PrimaryKey"] = true>
+	</cfif>
+	<cfif StructKeyExists(sArgs,"useInMultiRecordsets") AND isBoolean(sArgs.useInMultiRecordsets)>
+		<!--- If the field exists but a primary key is passed, set the primary key --->
+		<cfset aTable[FieldIndex]["useInMultiRecordsets"] = sArgs.useInMultiRecordsets>
+	</cfif>
+	
+	<cfset resetTableProps(arguments.tablename)>
+	
+</cffunction>
+
 <cffunction name="updateRecord" access="public" returntype="string" output="no" hint="I update a record in the given table with the provided data and return the primary key of the updated record.">
 	<cfargument name="tablename" type="string" required="yes" hint="The table on which to update data.">
 	<cfargument name="data" type="struct" required="yes" hint="A structure with the data for the desired record. Each key/value indicates a value for the field matching that key.">
@@ -400,7 +500,12 @@
 	<cfargument name="orderBy" type="string" default="">
 	<cfargument name="maxrows" type="numeric" default="#variables.rows#">
 	
-	<cfreturn QueryNew(getFieldList(arguments.tablename))>
+	<cfset var qResults = QueryNew("NumRecords")>
+	
+	<cfset QueryAddRow(qResults)>
+	<cfset QuerySetCell(qResults,"NumRecords",0)>
+	
+	<cfreturn qResults>
 </cffunction>
 
 <cffunction name="getInsertedIdentity" access="private" returntype="numeric" output="no" hint="I get the value of the identity field that was just inserted into the given table.">
@@ -439,18 +544,17 @@
 	</cfcase>
 	<cfcase value="label">
 		<!--- get label from table where join field values match --->
-		<cftry>
+		<cfif StructKeyExists(rowdata,field.Relation["join-field-local"])>
 			<cfset data[field.Relation["join-field-remote"]] = rowdata[field.Relation["join-field-local"]]>
 			<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"],maxrows=1)>
 			<cfset result = qRelatedRecords[field.Relation["field"]][1]>
-			<cfcatch>
-				<cfif StructKeyExists(field,"CF_Datatype")>
-					<cfset result = getSimValue(field.CF_Datatype)>
-				<cfelse>
-					<cfset result = ProperCase(Mid(variables.greek,RandRange(1,(Len(variables.greek)-40)),40))>
-				</cfif>
-			</cfcatch>
-		</cftry>
+		<cfelse>
+			<cfif StructKeyExists(field,"CF_Datatype")>
+				<cfset result = getSimValue(field.CF_Datatype)>
+			<cfelse>
+				<cfset result = ProperCase(Mid(variables.greek,RandRange(1,(Len(variables.greek)-40)),40))>
+			</cfif>
+		</cfif>
 	</cfcase>
 	<cfcase value="list">
 		<cfif StructKeyExists(field.Relation,"join-table")>
@@ -477,13 +581,13 @@
 	</cfcase>
 	<cfcase value="count">
 		<!--- get count from table where join field values match --->
-		<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
+		<cfset data[field.Relation["join-field-local"]] = rowdata[field.Relation["join-field-remote"]]>
 		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
 		<cfset result = qRelatedRecords.RecordCount>
 	</cfcase>
 	<cfcase value="max">
 		<!--- get the max value from table where join field values match --->
-		<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
+		<cfset data[field.Relation["join-field-local"]] = rowdata[field.Relation["join-field-remote"]]>
 		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
 		<cfset result = 0>
 		<cfloop query="qRelatedRecords">
@@ -494,7 +598,7 @@
 	</cfcase>
 	<cfcase value="min">
 		<!--- get the min value from table where join field values match --->
-		<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
+		<cfset data[field.Relation["join-field-local"]] = rowdata[field.Relation["join-field-remote"]]>
 		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
 		<cfset result = "">
 		
@@ -515,7 +619,7 @@
 	</cfcase>
 	<cfcase value="sum">
 		<!--- get the max value from table where join field values match --->
-		<cfset data[field.Relation["join-field"]] = rowdata[field.Relation["join-field"]]>
+		<cfset data[field.Relation["join-field-local"]] = rowdata[field.Relation["join-field-remote"]]>
 		<cfset qRelatedRecords = getRecords(tablename=field.Relation["table"],data=data,fieldlist=field.Relation["field"])>
 		<cfset result = 0>
 		<cfloop query="qRelatedRecords">
@@ -585,7 +689,7 @@
 		</cfloop>
 		
 		<cfif Len(arguments.orderby)>
-			<cfset QuerySetCell(qRecords, "DataMgrOrderField", UCase(qRecords[ListFirst(arguments.orderby," ")][row]))>
+			<cfset QuerySetCell(qRecords, "DataMgrOrderField", UCase(qRecords[ListFirst(ListFirst(arguments.orderby)," ")][row]))>
 		</cfif>
 	</cfloop>
 	
@@ -604,7 +708,7 @@
 	<cfargument name="field" type="struct" required="yes">
 	
 	<cfset var result = "">
-	<cfset var mylength = Min(field.Length,RandRange(10,field.Length))>
+	<cfset var mylength = 0>
 	<cfset var SpecialFormats = "email,phone,ssn">
 	
 	<cfswitch expression="#arguments.field.CF_DataType#">
@@ -656,6 +760,7 @@
 		<cfset result = RandRange(1,8)>
 	</cfcase>
 	<cfcase value="CF_SQL_VARCHAR">
+		<cfset mylength = Min(field.Length,RandRange(10,field.Length))>
 		<cfset result = ProperCase(Mid(variables.greek,RandRange(1,(Len(variables.greek)-mylength)),mylength))>
 	</cfcase>
 	<cfdefaultcase><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.field.CF_Datatype#'" errorcode="InvalidDataType"></cfdefaultcase>

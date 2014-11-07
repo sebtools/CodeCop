@@ -3,6 +3,7 @@
 <cfparam name="attributes.toolbarset" type="string" default="seb">
 <cfparam name="attributes.EditorAreaCSS" type="string" default="">
 <cfparam name="attributes.StylesXmlPath" type="string" default="">
+<cfparam name="attributes.fmdir" type="string" default="filemanager">
 <cfscript>
 if ( NOT Len(attributes.urlpath) ) {
 	attributes.urlpath = "/f/fckeditor/";
@@ -25,12 +26,12 @@ function loadFckEditor() {
 	var oFCKeditor = new FCKeditor( '#attributes.fieldname#' ) ;
 	oFCKeditor.BasePath	= '#ParentAtts.librarypath#fckeditor/';
 	oFCKeditor.Config['CustomConfigurationsPath'] = oFCKeditor.BasePath + 'sebconfig.js';
-	oFCKeditor.Config.LinkBrowserURL = oFCKeditor.BasePath + 'editor/filemanager/browser/default/browser.html?#ConnectorString#' ;
-	oFCKeditor.Config.ImageBrowserURL = oFCKeditor.BasePath + 'editor/filemanager/browser/default/browser.html?Type=Image&#ConnectorString#' ;
-	oFCKeditor.Config.FlashBrowserURL = oFCKeditor.BasePath + 'editor/filemanager/browser/default/browser.html?Type=Flash&#ConnectorString#' ;
-	oFCKeditor.Config.LinkUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&editorpath=' + oFCKeditor.BasePath ;
-	oFCKeditor.Config.ImageUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Image&editorpath=' + oFCKeditor.BasePath ;
-	oFCKeditor.Config.FlashUploadURL = oFCKeditor.BasePath + 'editor/filemanager/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Flash&editorpath=' + oFCKeditor.BasePath ;
+	oFCKeditor.Config.LinkBrowserURL = oFCKeditor.BasePath + 'editor/#attributes.fmdir#/browser/default/browser.html?#ConnectorString#' ;
+	oFCKeditor.Config.ImageBrowserURL = oFCKeditor.BasePath + 'editor/#attributes.fmdir#/browser/default/browser.html?Type=Image&#ConnectorString#' ;
+	oFCKeditor.Config.FlashBrowserURL = oFCKeditor.BasePath + 'editor/#attributes.fmdir#/browser/default/browser.html?Type=Flash&#ConnectorString#' ;
+	oFCKeditor.Config.LinkUploadURL = oFCKeditor.BasePath + 'editor/#attributes.fmdir#/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&editorpath=' + oFCKeditor.BasePath ;
+	oFCKeditor.Config.ImageUploadURL = oFCKeditor.BasePath + 'editor/#attributes.fmdir#/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Image&editorpath=' + oFCKeditor.BasePath ;
+	oFCKeditor.Config.FlashUploadURL = oFCKeditor.BasePath + 'editor/#attributes.fmdir#/upload/cfm/upload.cfm?UserFiles=#attributes.urlpath#&Type=Flash&editorpath=' + oFCKeditor.BasePath ;
 	<cfif Len(Trim(attributes.EditorAreaCSS))>oFCKeditor.Config.EditorAreaCSS = '#attributes.EditorAreaCSS#';</cfif>
 	<cfif Len(Trim(attributes.StylesXmlPath))>oFCKeditor.Config.StylesXmlPath = '#attributes.StylesXmlPath#';</cfif>
 	<cfif Len(Trim(attributes.toolbarset))>oFCKeditor.ToolbarSet = '#attributes.toolbarset#';</cfif>

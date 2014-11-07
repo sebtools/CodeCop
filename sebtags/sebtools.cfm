@@ -1,6 +1,6 @@
 <!---
-1.0 RC4 Dev 1 (Build 113)
-Last Updated: 2008-11-26
+1.0 RC8 (Build 120)
+Last Updated: 2011-01-16
 --->
 <cfscript>
 sebtools = StructNew();
@@ -10,9 +10,6 @@ sebtools.skins.carpediem = StructNew();
 sebtools.skins.carpediem.format = "semantic";
 sebtools.skins.carpediem.shape = "bar";
 sebtools.skins.carpediem.menutype = "drop-down";
-
-sebtools.skins.cfadmin = StructNew();
-sebtools.skins.cfadmin.format = "table";
 
 sebtools.skins.deepblue = StructNew();
 sebtools.skins.deepblue.format = "table";
@@ -61,4 +58,17 @@ sebtools.skins.tim = StructNew();
 sebtools.skins.tim.format = "table";
 sebtools.skins.tim.shape = "round";
 sebtools.skins.tim.menutype = "roundtab";
+
+if ( StructKeyExists(Attributes,"returnvar") ) {
+	if ( NOT StructKeyExists(Caller,attributes.returnvar) ) {
+		Caller[attributes.returnvar] = StructNew();
+	}
+	if ( NOT isStruct(Caller[attributes.returnvar]) ) {
+		Caller[attributes.returnvar] = StructNew();
+	}
+	if ( NOT StructKeyExists(Caller[attributes.returnvar],"sebtools") ) {
+		Caller[attributes.returnvar]["sebtools"] = StructNew();
+	}
+	Caller[attributes.returnvar]["sebtools"] = sebtools;
+}
 </cfscript>

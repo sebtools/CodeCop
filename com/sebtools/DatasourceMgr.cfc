@@ -109,6 +109,12 @@
 		</cfif>
 	</cfloop>
 	
+	<cfquery name="qDatasources" dbtype="query">
+	SELECT		name
+	FROM		qDatasources
+	ORDER BY	nameu	
+	</cfquery>
+	
 	<cfreturn qDatasources>
 </cffunction>
 

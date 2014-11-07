@@ -1,7 +1,7 @@
-<!--- 2.2 RC1 Dev1 (Build 144) --->
-<!--- Last Updated: 2008-12-19 --->
+<!--- 2.5.4 (Build 176) --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
-<cfcomponent extends="DataMgr" displayname="Data Manager for MS Access" hint="I manage data interactions with the MS Access database. I can be used to handle inserts/updates.">
+<cfcomponent extends="DataMgr" displayname="Data Manager for MS Access" hint="I manage data interactions with the MS Access database.">
 
 <cffunction name="getDatabase" access="public" returntype="string" output="no" hint="I return the database platform being used (Access,MS SQL,MySQL etc).">
 	<cfreturn "Access">
@@ -22,7 +22,7 @@
 	<cfset var type = getDBDataType(sField.CF_DataType)>
 	<cfset var result = "">
 	
-	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# <cfif sField.Increment>COUNTER<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric"><!---  AND StructKeyExists(sField,"scale") AND sField.scale GT 0 ---> float<cfelse>#getDBDataType(sField.CF_DataType)#</cfif><cfif isStringType(type)>(#sField.Length#)</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
+	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# <cfif sField.Increment>COUNTER<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric"><!---  AND StructKeyExists(sField,"scale") AND sField.scale GT 0 ---> float<cfelse>#getDBDataType(sField.CF_DataType)#</cfif><cfif isStringType(type)>(#Min(sField.Length,255)#)</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
 	
 	<cfreturn result>
 </cffunction>
@@ -64,6 +64,41 @@
 	
 </cffunction>
 
+<cffunction name="dbtableexists" access="public" returntype="boolean" output="no" hint="I indicate whether or not the given table exists in the database">
+	<cfargument name="tablename" type="string" required="true">
+	<cfargument name="dbtables" type="string" default="">
+	
+	<cfset var result = false>
+	
+	<cfif NOT ( StructKeyExists(arguments,"dbtables") AND Len(Trim(arguments.dbtables)) )>
+		<cfset arguments.dbtables = "">
+		<cftry><!--- Try to get a list of tables load in DataMgr --->
+			<cfset arguments.dbtables = getDatabaseTables()>
+		<cfcatch>
+		</cfcatch>
+		</cftry>
+	</cfif>
+	
+	<cfif Len(arguments.dbtables)><!--- If we have tables loaded in DataMgr --->
+		<cfif ListFindNoCase(arguments.dbtables, arguments.tablename)>
+			<cfset result = true>
+		</cfif>
+	</cfif>
+	<!--- SEB 2010-04-25: This seems a tad aggresive (a lot of penalty for a just in case measure). Let's ditch it unless it proves essential. --->
+	<!--- SEB 2010-05-07: Looks like it is needed for MS Access --->
+	<cfif NOT result>
+		<cfset result = true>
+		<cftry><!--- create any table on which a select statement errors --->
+			<cfset qTest = runSQL("SELECT #getMaxRowsPrefix(1)# #escape(variables.tables[arguments.tablename][1].ColumnName)# FROM #escape(arguments.tablename)# #getMaxRowsSuffix(1)#")>
+			<cfcatch>
+				<cfset result = false>
+			</cfcatch>
+		</cftry>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
 <cffunction name="getCreateSQL" access="public" returntype="string" output="no" hint="I return the SQL to create the given table.">
 	<cfargument name="tablename" type="string" required="yes" hint="The name of the table to create.">
 	
@@ -82,7 +117,7 @@
 	
 	<!--- create the sql to create the table --->
 	<cfsavecontent variable="CreateSQL"><cfoutput>
-	CREATE TABLE #arguments.tablename# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
+	CREATE TABLE #escape(arguments.tablename)# (<cfloop index="ii" from="1" to="#ArrayLen(arrFields)#" step="1">
 		#sqlCreateColumn(arrFields[ii])#<cfif ii LT ArrayLen(arrFields)> ,</cfif></cfloop>
 		<cfif Len(pkfields)>,
 		CONSTRAINT [PK_#tablename#] PRIMARY KEY 
@@ -146,8 +181,8 @@
 		<cfset arguments.tablealias = arguments.tablename>
 	</cfif>
 	
-	<cfloop index="colname" list="#arguments.fields#">
-		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=colname,tablealias=arguments.tablealias,useFieldAlias=false)>
+	<cfloop index="col" list="#arguments.fields#">
+		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=col,tablealias=arguments.tablealias,useFieldAlias=false)>
 		<cfif ArrayLen(aSQL)>
 			<cfset ArrayAppend(aSQL," & '#arguments.delimeter#' & ")>
 		</cfif>
@@ -200,8 +235,8 @@
 	<cfscript>
 	var qRawFetch = 0;
 	var arrStructure = 0;
-	var tmpStruct = StructNew();
-	var i = 0;
+	var sField = StructNew();
+	var ii = 0;
 
 	var PrimaryKeys = 0;
 	var TableData = ArrayNew(1);
@@ -211,28 +246,23 @@
 	<cfset arrStructure = getMetaData(qRawFetch)>
 	
 	<cfif isArray(arrStructure)>
-		<cfloop index="i" from="1" to="#ArrayLen(arrStructure)#" step="1">
-			<cfset tmpStruct = StructNew()>
-			<cfset tmpStruct["ColumnName"] = arrStructure[i].Name>
-			<cfset tmpStruct["CF_DataType"] = getCFDataType(arrStructure[i].TypeName)>
+		<cfloop index="ii" from="1" to="#ArrayLen(arrStructure)#" step="1">
+			<cfset sField = StructNew()>
+			<cfset sField["ColumnName"] = arrStructure[ii].Name>
+			<cfset sField["CF_DataType"] = getCFDataType(arrStructure[ii].TypeName)>
 			<!--- %% Ugly guess --->
-			<cfif arrStructure[i].TypeName eq "COUNTER" OR ( i eq 1 AND arrStructure[i].TypeName eq "INT" AND Right(arrStructure[i].Name,2) eq "ID" )>
-				<cfset tmpStruct["PrimaryKey"] = true>
-				<cfset tmpStruct["Increment"] = true>
-				<cfset tmpStruct["AllowNulls"] = false>
-			<cfelse>
-				<cfset tmpStruct["PrimaryKey"] = false>
-				<cfset tmpStruct["Increment"] = false>
-				<cfset tmpStruct["AllowNulls"] = true>
+			<cfif arrStructure[ii].TypeName eq "COUNTER" OR ( ii EQ 1 AND arrStructure[ii].TypeName EQ "INT" AND Right(arrStructure[ii].Name,2) EQ "ID" )>
+				<cfset sField["PrimaryKey"] = true>
+				<cfset sField["Increment"] = true>
+				<cfset sField["AllowNulls"] = false>
 			</cfif>
 			<!--- %% Ugly guess --->
-			<cfif isStringType(arrStructure[i].TypeName) AND NOT tmpStruct["CF_DataType"] eq "CF_SQL_LONGVARCHAR">
-				<cfset tmpStruct["length"] = 255>
+			<cfif isStringType(arrStructure[ii].TypeName) AND NOT sField["CF_DataType"] EQ "CF_SQL_LONGVARCHAR">
+				<cfset sField["length"] = 255>
 			</cfif>
-			<cfset tmpStruct["Special"] = "">
 			
-			<cfif Len(tmpStruct.CF_DataType)>
-				<cfset ArrayAppend(TableData,StructCopy(tmpStruct))>
+			<cfif Len(sField.CF_DataType)>
+				<cfset ArrayAppend(TableData,adjustColumnArgs(sField))>
 			</cfif>
 		</cfloop>
 	<cfelse>
@@ -248,7 +278,7 @@
 	<cfset var result = "">
 	
 	<cfswitch expression="#arguments.type#">
-		<cfcase value="binary,image"><cfthrow message="DataMgr object cannot handle this data type." type="DataMgr" detail="DataMgr cannot handle data type '#arguments.type#'" errorcode="InvalidDataType"></cfcase>
+		<cfcase value="binary,image,longbinary"><cfset result = "CF_SQL_BLOB"></cfcase>
 		<cfcase value="bit"><cfset result = "CF_SQL_BIT"></cfcase>
 		<cfcase value="char,varchar"><cfset result = "CF_SQL_VARCHAR"></cfcase>
 		<cfcase value="counter"><cfset result = "CF_SQL_INTEGER"></cfcase>
@@ -278,6 +308,7 @@
 	<cfswitch expression="#arguments.CF_Datatype#">
 		<cfcase value="CF_SQL_BIGINT"><cfset result = "integer"></cfcase>
 		<cfcase value="CF_SQL_BIT"><cfset result = "bit"></cfcase>
+		<cfcase value="CF_SQL_BLOB"><cfset result = "longbinary"></cfcase>
 		<cfcase value="CF_SQL_CHAR"><cfset result = "char"></cfcase>
 		<cfcase value="CF_SQL_DATE"><cfset result = "datetime"></cfcase>
 		<cfcase value="CF_SQL_DECIMAL"><cfset result = "decimal"></cfcase>
@@ -391,6 +422,32 @@
 	<cfset result = qCheckKey.NewID>
 	
 	<cfreturn result>
+</cffunction>
+
+<cffunction name="getOrderbyFieldList" access="private" returntype="array" output="no">
+	
+	<cfset var adjustedfieldlist = "">
+	<cfset var orderarray = ArrayNew(1)>
+	<cfset var temp = "">
+	<cfset var sqlarray = ArrayNew(1)>
+	
+	<cfif Len(arguments.fieldlist)>
+		<cfloop list="#arguments.fieldlist#" index="temp">
+			<cfset adjustedfieldlist = ListAppend(adjustedfieldlist,escape(arguments.tablealias & '.' & temp))>
+			<cfif ArrayLen(orderarray) GT 0>
+				<cfset ArrayAppend(orderarray,",")>
+			</cfif>
+			<cfset ArrayAppend(orderarray,getFieldSelectSQL(tablename=arguments.tablename,field=temp,tablealias=arguments.tablealias,useFieldAlias=false))>
+		</cfloop>
+	</cfif>
+
+	<cfif Len(arguments.function)>
+		<cfset ArrayAppend(sqlarray,adjustedfieldlist)>
+	<cfelse>
+		<cfset ArrayAppend(sqlarray,"#escape(arguments.fieldlist)#")>
+	</cfif>
+	
+	<cfreturn sqlarray>
 </cffunction>
 
 <cffunction name="isStringType" access="private" returntype="boolean" output="no" hint="I indicate if the given datatype is valid for string data.">

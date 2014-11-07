@@ -1,10 +1,10 @@
 <!---
-1.0 RC4 Dev 1 (Build 113)
-Last Updated: 2008-11-26
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
+http://www.bryantwebconsulting.com/docs/sebtags/sebcolumn-general-attributes.cfm?version=1.0
 ---><cfsilent>
 <cfset TagName = "cf_sebColumn">
 <cfset ParentTag = "cf_sebTable">
@@ -13,7 +13,8 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 </cfif>
 <cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode eq "Start">
 	<cfassociate basetag="#ParentTag#" datacollection="qColumns">
-	<cfset ParentAtts = request.cftags[ParentTag].attributes>
+	<cfset ParentData = getBaseTagData("cf_sebTable")>
+	<cfset ParentAtts = ParentData.attributes>
 	<cfset sfx = ParentAtts.suffix>
 	<cfscript>
 	if ( StructKeyExists(attributes,"dbfield") AND StructKeyExists(Caller, "sebColumns") AND StructKeyExists(Callers.sebColumns,attributes.dbfield) ) {
@@ -24,7 +25,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 	}
 	if ( StructKeyExists(attributes,"dbfield") AND StructKeyExists(ParentAtts,"sColumns") AND isStruct(ParentAtts.sColumns) AND StructKeyExists(ParentAtts.sColumns,attributes.dbfield) AND isStruct(ParentAtts.sColumns[attributes.dbfield]) ) {
 		for (att in ParentAtts.sColumns[attributes.dbfield]) {
-			if ( NOT StructKeyExists(attributes,att) ) {
+			if ( StructKeyExists(ParentAtts.sColumns[attributes.dbfield],att) AND NOT StructKeyExists(attributes,att) ) {
 				attributes[att] = ParentAtts.sColumns[attributes.dbfield][att];
 			}
 		}
@@ -41,7 +42,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 	}
 	</cfscript>
 	<cfset attributes.ParentAtts = ParentAtts>
-	<cfset ColumnTypes = "text,numeric,date,datetime,time,yesno,icon,checkbox,radio,input,select,sorter,delete,submit,link,money,html">
+	<cfset ColumnTypes = "text,numeric,date,datetime,time,yesno,icon,checkbox,radio,input,select,sorter,delete,submit,link,money,html,memo,image">
 	<cfset dbcolumns = "text,date,yesno,icon,money">
 	<cfparam name="attributes.name" default="">
 	<cfparam name="attributes.DataType" default="text"><!--- text,date,yesno,icon,checkbox,input,select,delete --->
@@ -53,7 +54,11 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 		<cfparam name="attributes.dbfield" default="">
 	</cfif>
 	<cfparam name="attributes.sortfield" default="#attributes.dbfield#">
-	<cfparam name="attributes.label" default="#attributes.dbfield#">
+	<cfif attributes.type EQ "Sorter">
+		<cfparam name="attributes.label" default="">
+	<cfelse>
+		<cfparam name="attributes.label" default="#attributes.dbfield#">
+	</cfif>
 	<cfparam name="attributes.width" default="">
 	<cfparam name="attributes.reltable" default="">
 	<cfparam name="attributes.relfield" default="">
@@ -63,13 +68,14 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 	<cfparam name="attributes.noshowalt" default="&nbsp;">
 	<cfparam name="attributes.size" default="0" type="numeric">
 	<cfparam name="attributes.defaultSort" default="">
+	<cfparam name="attributes.LinkClass" default="">
 	<cfif Len(attributes.sortfield) AND ( attributes.defaultSort eq "ASC" OR attributes.defaultSort eq "DESC" ) AND NOT Len(ParentAtts.orderby) >
 		<cfset ParentAtts.orderby = "#attributes.sortfield# #attributes.defaultSort#">
 	</cfif>
 	<cfswitch expression="#attributes.type#">
 		<cfcase value="date"><cfparam name="attributes.mask" default="m/dd/yyyy"></cfcase>
 		<cfcase value="datetime"><cfparam name="attributes.mask" default="m/dd/yyyy; h:mm:ss tt"></cfcase>
-		<cfcase value="time"><cfparam name="attributes.mask" default="h:mm:ss tt"></cfcase>
+		<cfcase value="time"><cfparam name="attributes.mask" default="h:mm tt"></cfcase>
 		<cfdefaultcase><cfparam name="attributes.mask" default=""></cfdefaultcase>
 	</cfswitch>
 	<cfparam name="attributes.rolodex" default="false" type="boolean">
@@ -107,6 +113,9 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 		<cfset attributes.name = attributes.dbfield>
 	</cfif>
 	
+	<cfif Len(attributes.link) AND NOT Len(attributes.LinkClass)>
+		<cfset attributes.LinkClass = "sebColumnLink-" & LCase(ReReplaceNoCase(attributes.label,"[^a-zA-Z0-9]","-","ALL"))>
+	</cfif>
 	<cfif attributes.type eq "select">
 		<cfset attributes.qOptions = QueryNew("value,display")>
 		<cfif Len(attributes.subquery)>
@@ -183,6 +192,27 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 		<cfcase value="numeric">
 			<cfscript>
 			function display_numeric(value,rownum,pkid,atts) {
+				if ( ListLen(value,".") EQ 2 ) {
+					if ( StructKeyExists(atts,"precision") AND isNumeric(atts.precision) AND atts.precision EQ Int(atts.precision) ) {
+						//value = ( Round( value * (10^atts.precision) ) / (10^atts.precision) );
+						value = (
+							Round(
+								value
+								*
+								(10^atts.precision)
+							)
+							/
+							(10^atts.precision)
+						);
+						value = NumberFormat(value,"9999.#RepeatString('0', atts.precision)#");
+						//value = Round( value * (10^atts.precision) );
+						//value = atts.precision;
+					} else {
+						value = ReReplaceNoCase(value,"0*$","","ALL");
+					}
+				}
+				value = rereplaceNoCase(value,"\.$","","ALL");
+				//value = StructKeyExists(atts,"precision") AND isNumeric(atts.precision) AND atts.precision EQ Int(atts.precision);
 				return '<div style="float:right;">#value#</div>';
 			}
 			</cfscript>
@@ -264,7 +294,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 				<cfset var inputval = value>
 				
 				<cfif isDate(inputval)>
-					<cfif StructKeyExists(atts,"mask")>
+					<cfif StructKeyExists(atts,"mask") AND Len(Trim(atts.mask))>
 						<cfset inputval = DateFormat(inputval,atts.mask)>
 					<cfelse>
 						<cfset inputval = DateFormat(inputval,"mm/dd/yyyy")>
@@ -272,7 +302,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 				</cfif>
 				
 				<cfif Len(atts.name)>
-					<cfsavecontent variable="result"><cfoutput><input type="text" name="#atts.name#_#rownum#" id="#atts.name##rownum#" value="#inputval#"<cfif atts.size> size="#atts.size#"</cfif>/></cfoutput></cfsavecontent>
+					<cfsavecontent variable="result"><cfoutput><cfif StructKeyExists(atts,"input_prefix")>#atts.input_prefix#</cfif><input type="text" name="#atts.name#_#rownum#" id="#atts.name##rownum#" value="#inputval#"<cfif atts.size> size="#atts.size#"</cfif>/><cfif StructKeyExists(atts,"input_suffix")>#atts.input_suffix#</cfif></cfoutput></cfsavecontent>
 				</cfif>
 				
 				<cfreturn result>
@@ -348,8 +378,12 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 			</cffunction>
 		</cfcase>
 		<cfcase value="delete">
+			<cfset ParentData.HasDeleteColumn = true>
 			<cfset attributes.header = "">
 			<cfset attributes.isInput = true>
+			<cfif attributes.show IS true AND ParentAtts.isDeletable NEQ false>
+				<cfset attributes.show = ParentAtts.isDeletable>
+			</cfif>
 			<cffunction name="display_delete">
 				<cfargument name="value" type="string" required="yes">
 				<cfargument name="rownum" type="numeric" required="yes">
@@ -365,6 +399,33 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 				
 				<cfif NOT ( ListFindNoCase(qTableData.ColumnList,"isDeletable") AND isBoolean(qTableData.isDeletable[rownum]) AND NOT qTableData.isDeletable[rownum] )>
 					<cfsavecontent variable="result"><cfoutput><input type="submit" name="delete_#rownum#" value="#Label#" class="delete" style="height:20px;" onclick="return confirm('Are you sure you want to delete this item?')"/></cfoutput></cfsavecontent>
+				</cfif>
+				
+				<cfreturn result>
+			</cffunction>
+		</cfcase>
+		<cfcase value="edit">
+			<cfset ParentData.HasDeleteColumn = true>
+			<cfset attributes.header = "">
+			<cfset attributes.isInput = true>
+			<cfif attributes.show IS true AND ParentAtts.isEditable NEQ false>
+				<cfset attributes.show = ParentAtts.isEditable>
+			</cfif>
+			<cffunction name="display_edit">
+				<cfargument name="value" type="string" required="yes">
+				<cfargument name="rownum" type="numeric" required="yes">
+				<cfargument name="pkid" type="string" required="yes">
+				<cfargument name="atts" type="struct" required="yes">
+				
+				<cfset var result = "">
+				<cfset var Label = "delete">
+				
+				<cfif StructKeyExists(atts,"label") AND Len(atts.label)>
+					<cfset Label = atts.label>
+				</cfif>
+				
+				<cfif NOT ( ListFindNoCase(qTableData.ColumnList,attributes.isEditable) AND isBoolean(qTableData[attributes.isEditable][rownum]) AND NOT qTableData[attributes.isEditable][rownum] )>
+					<cfsavecontent variable="result"><cfoutput><a href="#ParentData.varEditPage##ParentData.pkid#">edit</a></a></cfoutput></cfsavecontent>
 				</cfif>
 				
 				<cfreturn result>
@@ -405,11 +466,7 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 				<cfset var linkatt = "">
 				
 				<cfif rownum>
-					<cfloop index="col" list="#qTableData.ColumnList#">
-						<cfif FindNoCase("[#col#]", link)>
-							<cfset link = ReplaceNoCase(link, "[#col#]", qTableData[col][rownum], "ALL")>
-						</cfif>
-					</cfloop>
+					<cfset link = populateMarkers(link,qTableData,rownum)>
 				</cfif>
 				
 				<cfif StructKeyExists(atts,"text") AND Len(atts.text) AND NOT Len(value)>
@@ -430,12 +487,42 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 				<cfargument name="atts" type="struct" required="yes">
 				
 				<cfset var result = arguments.value>
+				<cfset var sAtts = arguments.atts>
+				<cfset var style = "">
 				
 				<cfif attributes.xhtml>
 					<cfset result = XmlFormat(arguments.value)>
 				<cfelse>
 					<cfset result = HTMLEditFormat(arguments.value)>
 				</cfif>
+				
+				<cfif StructKeyExists(sAtts,"style") AND Len(sAtts.style)>
+					<cfset style = populateMarkers(sAtts.style,qTableData,arguments.rownum)>
+					<cfset result = '<div style="#style#">#result#</div>'>
+				<cfelse>
+					<cfset result = '<div>#result#</div>'>
+				</cfif>
+				
+				<cfreturn result>
+			</cffunction>
+		</cfcase>
+		<cfcase value="memo">
+			<cfset attributes.isInput = false>
+			<cffunction name="display_memo">
+				<cfargument name="value" type="string" required="yes">
+				<cfargument name="rownum" type="numeric" required="yes">
+				<cfargument name="pkid" type="string" required="yes">
+				<cfargument name="atts" type="struct" required="yes">
+				
+				<cfset var result = arguments.value>
+				
+				<cfif attributes.xhtml>
+					<cfset result = XmlFormat(arguments.value)>
+				<cfelse>
+					<cfset result = HTMLEditFormat(arguments.value)>
+				</cfif>
+				
+				<cfset result = "#ParagraphFormat(result)#">
 				
 				<cfreturn result>
 			</cffunction>
@@ -449,6 +536,19 @@ http://www.bryantwebconsulting.com/cftags/cf_sebColumn.htm
 				<cfargument name="atts" type="struct" required="yes">
 				
 				<cfset var result = arguments.value>
+				
+				<cfreturn result>
+			</cffunction>
+		</cfcase>
+		<cfcase value="image">
+			<cfset attributes.isInput = false>
+			<cffunction name="display_image">
+				<cfargument name="value" type="string" required="yes">
+				<cfargument name="rownum" type="numeric" required="yes">
+				<cfargument name="pkid" type="string" required="yes">
+				<cfargument name="atts" type="struct" required="yes">
+				
+				<cfset var result = '<img src="#arguments.value#" />'>
 				
 				<cfreturn result>
 			</cffunction>

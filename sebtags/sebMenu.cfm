@@ -1,14 +1,14 @@
 <!---
-1.0 RC4 Dev 1 (Build 113)
-Last Updated: 2008-11-26
+1.0 RC9 (Build 121)
+Last Updated: 2011-10-11
 Created by Steve Bryant 2004-06-01
-Tim Jackson provided the original tags as well as the inpiration and brilliant implementation of consistency for admin sections.
-Information: sebtools.com
+Information: http://www.bryantwebconsulting.com/docs/sebtags/?version=1.0
 Documentation:
-http://www.bryantwebconsulting.com/cftags/cf_sebform.htm
----><cfsilent>
-<cfset TagName = "cf_sebMenu">
+http://www.bryantwebconsulting.com/docs/sebtags/sebmenu-basics.cfm?version=1.0
+Tim Jackson provided the original tags as well as the inpiration and brilliant implementation of consistency for admin sections.
+---><cfsilent><cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode EQ "Start">
 <cfscript>
+TagName = "cf_sebMenu";
 //Default attributes from request.cftags.sebtags structure
 if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "sebtags") ) {
 	StructAppend(attributes, request.cftags["sebtags"], "no");
@@ -17,6 +17,7 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, "seb
 if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagName) ) {
 	StructAppend(attributes, request.cftags[TagName], "no");
 }
+
 </cfscript>
 <cfparam name="attributes.action" default="StartPage"><!--- options: StartPage,EndPage --->
 <cfparam name="attributes.menutype" default=""><!--- options: bar,drop-down,roundtab,squaretab --->
@@ -38,23 +39,28 @@ if ( StructKeyExists(request, "cftags") AND StructKeyExists(request.cftags, TagN
 
 <cfparam name="attributes.align" default=""><!--- not required --->
 <cfparam name="attributes.TextRight" default="">
+<cfparam name="attributes.useSessionMessages" default="false">
 
 <cfparam name="url.sebTab" default=""><!--- indicator of chosen tab --->
 
-<cfinclude template="sebtools.cfm">
+<cfinclude template="sebUdf.cfm"><cfinclude template="sebtools.cfm">
+<cfset isCustomType = (
+							Len(Trim(attributes.menutype))
+						AND	( StructKeyExists(sebtools.skins,attributes.skin) AND NOT StructKeyExists(sebtools.skins[attributes.skin],attributes.menutype) )
+						AND	FileExists("#getDirectoryFromPath(getCurrentTemplatePath())#sebMenu_#attributes.menutype#.cfm")
+)>
 
-</cfsilent>
-<cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode eq "End"><cfsilent>
-<cfif NOT ( isDefined("ThisTag.items") AND isArray(ThisTag.items) AND ArrayLen(ThisTag.items) )>
-	<cfset ThisTag.items = ArrayNew(1)>
-	<!--- <cfthrow message="&lt;#TagName#&gt; must include at least one &lt;cf_Tab&gt;" type="cftag"> --->
-</cfif>
-<cfif isDefined("attributes.data") AND isArray(attributes.data)>
-	<cfloop index="ii" from="1" to="#ArrayLen(attributes.data)#">
-		<cfset ArrayAppend(ThisTag.items,attributes.data[ii])>
-	</cfloop>
-</cfif>
+</cfif></cfsilent>
+<cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode EQ "End"><cfsilent>
 <cfscript>
+if ( NOT ( isDefined("ThisTag.items") AND isArray(ThisTag.items) AND ArrayLen(ThisTag.items) ) ) {
+	ThisTag.items = ArrayNew(1);
+}
+if ( isDefined("attributes.data") AND isArray(attributes.data) ) {
+	for ( ii=1; ii LTE ArrayLen(attributes.data); ii=ii+1 ) {
+		ArrayAppend(ThisTag.items,attributes.data[ii]);
+	}
+}
 //Use skins attribute for skins definitions
 if ( StructKeyExists(attributes,"skins") AND isStruct(attributes.skins) ) {
 	StructAppend(sebtools.skins,attributes.skins,true);
@@ -116,7 +122,7 @@ for (i=1; i lte ArrayLen(ThisTag.tabs); i=i+1) {
 if ( NOT CurrTab ) {
 	//  Look in each tab
 	for (i=1; i lte ArrayLen(ThisTag.tabs); i=i+1) {
-		if ( Len(ThisTag.tabs[i].pages) ) {
+		if ( StructKeyExists(ThisTag.tabs[i],"pages") AND Len(ThisTag.tabs[i].pages) ) {
 			//Look for page in pages list
 			if ( ListFindNoCase(ThisTag.tabs[i].pages, CurrPage) ) {
 				CurrTab = i;
@@ -131,7 +137,7 @@ if ( NOT CurrTab ) {
 					CurrTab = i;
 					break;
 				}
-				if ( Len(ThisTag.tabs[i].items[j].pages) ) {
+				if ( StructKeyExists(ThisTag.tabs[i].items[j],"pages") AND Len(ThisTag.tabs[i].items[j].pages) ) {
 					if ( ListFindNoCase(ThisTag.tabs[i].items[j].pages, CurrPage) ) {
 						CurrTab = i;
 						break;
@@ -256,13 +262,25 @@ if ( CurrTab ) {
 }
 </cfscript>
 
-</cfsilent><!--- START OUTPUT ---><cfoutput><!-- CurrTab:#CurrTab# --><cfif attributes.menutype eq "drop-down"><cfsavecontent variable="head1"><script language="JavaScript" src="#attributes.librarypath#nav.js" type="text/javascript"></script><style type="text/css">@import url(#attributes.librarypath#nav.css);</style></cfsavecontent><cfhtmlhead text="#head1#"></cfif><cfif Len(attributes.skin)><cfsavecontent variable="styletag"><style type="text/css">@import url(#attributes.skinpath##attributes.skin#.css);</style></cfsavecontent><cfhtmlhead text="#styletag#"></cfif><cfsavecontent variable="styletag"><style type="text/css">##sebMenuMain {width:#attributes.width#px;border:1px solid ##BDBDBD;}</style></cfsavecontent><cfhtmlhead text="#styletag#">
-<div<cfif Len(Trim(attributes.skin))> class="sebMenu-skin-#LCase(attributes.skin)#"</cfif>><cfif attributes.menutype eq "drop-down">
-<!--- Drop-Down ---><div id="sebTab">
-<div id="nav" style="width:#attributes.width#px;" class="sfMenu">
-	<ul><cfloop index="i" from="1" to="#ArrayLen(ThisTag.tabs)#" step="1"><li><a href="#ThisTag.tabs[i].LinkURL#"<cfif CurrTab eq i> class="CurrTab"</cfif>>#ThisTag.tabs[i].Label#</a><cfif StructKeyExists(ThisTag.tabs[i], "items")><ul><cfloop index="j" from="1" to="#ArrayLen(ThisTag.tabs[i].items)#" step="1"><li><a href="#ThisTag.tabs[i].items[j].Link#">#ThisTag.tabs[i].items[j].Label#</a></cfloop></ul></cfif></li></cfloop></ul>
-</div>
-<br/></div><cfelseif attributes.menutype EQ "list">
+</cfsilent><!--- START OUTPUT ---><cfoutput>
+<!-- CurrTab:#CurrTab# -->
+<cfif Len(attributes.skin)><cfsavecontent variable="styletag"><style type="text/css">@import url(#attributes.skinpath##attributes.skin#.css);</style></cfsavecontent><cfhtmlhead text="#styletag#"></cfif>
+<cfsavecontent variable="styletag"><style type="text/css">##sebMenuMain {width:#attributes.width#px;border:1px solid ##BDBDBD;}</style></cfsavecontent><cfhtmlhead text="#styletag#">
+
+<div<cfif Len(Trim(attributes.skin))> class="sebMenu-skin-#LCase(attributes.skin)#"</cfif>>
+<div class="sebMenu-type-#attributes.menutype#">
+<cfswitch expression="#attributes.menutype#">
+<cfcase value="drop-down">
+	<cfsavecontent variable="head1"><script language="JavaScript" src="#attributes.librarypath#nav.js" type="text/javascript"></script><style type="text/css">@import url(#attributes.librarypath#nav.css);</style></cfsavecontent><cfhtmlhead text="#head1#">
+	<!--- Drop-Down --->
+	<div id="sebTab">
+		<div id="nav" style="width:#attributes.width#px;" class="sfMenu">
+			<ul><cfloop index="i" from="1" to="#ArrayLen(ThisTag.tabs)#" step="1"><li><a href="#ThisTag.tabs[i].LinkURL#"<cfif CurrTab eq i> class="CurrTab"</cfif>>#ThisTag.tabs[i].Label#</a><cfif StructKeyExists(ThisTag.tabs[i], "items")><ul><cfloop index="j" from="1" to="#ArrayLen(ThisTag.tabs[i].items)#" step="1"><li><a href="#ThisTag.tabs[i].items[j].Link#">#ThisTag.tabs[i].items[j].Label#</a></cfloop></ul></cfif></li></cfloop></ul>
+		</div>
+		<br/>
+	</div>
+</cfcase>
+<cfcase value="list">
 <div id="sebMenu" style="width:#attributes.width#px;">
 <table width="#attributes.width#"<cfif Len(attributes.align)> align="#attributes.align#"</cfif> border="0" cellspacing="0" cellpadding="0" id="sebTab">
 <tr>
@@ -273,7 +291,12 @@ if ( CurrTab ) {
 	</td>
 </tr>
 <tr>
-	<td valign="top" id="sebMenuBody"><cfelse>
+	<td valign="top" id="sebMenuBody">
+</cfcase>
+<cfdefaultcase><!--  -->
+<cfif isCustomType>
+	<cfinclude template="sebMenu_#attributes.menutype#.cfm">
+<cfelse>
 <div id="sebMenu" style="width:#attributes.width#px;">
 <div id="sebMenu-topbar" align="left">
 <table<!---  width="#attributes.width#" ---><cfif Len(attributes.align)> align="#attributes.align#"</cfif> border="0" cellspacing="0" cellpadding="0" id="sebTab">
@@ -299,18 +322,28 @@ if ( CurrTab ) {
 	<hr size="1" /><cfelse>
 	<br/></cfif>
 	<ul>
-		<li><a href="#attributes.adminpath#">Admin Home</a></li>
+		<cfif ArrayLen(ThisTag.tabs) NEQ 1><li><a href="#attributes.adminpath#">Admin Home</a></li></cfif>
 		<li><a href="/" target="_blank">View Site</a></li><cfif Len(attributes.LogoutLink)>
 		<li><a href="#attributes.LogoutLink#" id="sebMenuLogoutLink">Logout</a></li></cfif>
 	</ul>
 	<div><img src="#attributes.librarypath#i.gif" height="1" width="#LeftSideWidth#" alt=""></div>
 	</td></cfif>
-	<td width="100%" valign="top" id="sebMenuBody" style="padding:8px;"></cfif></cfoutput><cfset ThisTag.GeneratedContent = "">
+	<td width="100%" valign="top" id="sebMenuBody" style="padding:8px;">
+</cfif>
+</cfdefaultcase>
+</cfswitch>
+<cfif attributes.useSessionMessages>#showSessionMessage()#</cfif>
+<!--- ***** --->
+</cfoutput><cfset ThisTag.GeneratedContent = "">
 </cfif>
 <cfif isDefined("ThisTag.ExecutionMode") AND ThisTag.ExecutionMode eq "Start" AND ListFindNoCase("end,EndPage", attributes.action)>
+<cfif isCustomType>
+	<cfinclude template="sebMenu_#attributes.menutype#.cfm">
+<cfelse>
 	</td>
 </tr>
 </table>
+</cfif>
 </div>
 </div>
 </cfif>

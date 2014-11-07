@@ -1,7 +1,7 @@
-<!--- 2.2 RC1 Dev1 (Build 144) --->
-<!--- Last Updated: 2008-12-19 --->
+<!--- 2.5.4 (Build 176) --->
+<!--- Last Updated: 2014-07-21 --->
 <!--- Created by Steve Bryant 2004-12-08 --->
-<cfcomponent extends="DataMgr" displayname="Data Manager for MySQL" hint="I manage data interactions with the MySQL database. I can be used to handle inserts/updates.">
+<cfcomponent extends="DataMgr" displayname="Data Manager for MySQL" hint="I manage data interactions with the MySQL database.">
 
 <cffunction name="getDatabase" access="public" returntype="string" output="no" hint="I return the database platform being used (Access,MS SQL,MySQL etc).">
 	<cfreturn "MySQL">
@@ -22,7 +22,7 @@
 	<cfset var type = getDBDataType(sField.CF_DataType)>
 	<cfset var result = "">
 	
-	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# #type#<cfif isStringType(type)>(#sField.Length#)<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND StructKeyExists(sField,"scale") AND StructKeyExists(sField,"precision")>(#Val(sField.precision)#,#Val(sField.scale)#)</cfif><cfif sField.Increment> AUTO_INCREMENT</cfif><cfif Len(Trim(sField.Default))> DEFAULT #sField.Default#</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
+	<cfsavecontent variable="result"><cfoutput>#escape(sField.ColumnName)# #type#<cfif isStringType(type)>(#sField.Length#)<cfelseif getTypeOfCFType(sField.CF_DataType) EQ "numeric" AND StructKeyExists(sField,"scale") AND StructKeyExists(sField,"precision")>(#Val(sField.precision)#,#Val(sField.scale)#)</cfif><cfif sField.Increment> AUTO_INCREMENT</cfif><cfif Len(Trim(sField.Default)) AND sField.Default NEQ getNowSQL() AND NOT sField.Default CONTAINS "0000-00-00"> DEFAULT #sField.Default#</cfif> <cfif sField.PrimaryKey OR NOT sField.AllowNulls>NOT </cfif>NULL</cfoutput></cfsavecontent>
 	
 	<cfreturn result>
 </cffunction>
@@ -63,9 +63,9 @@
 	
 	<cfloop index="colname" list="#arguments.fields#">
 		<cfif Len(result)>
-			<cfset result =  "#result#, '#arguments.delimeter#', #colname#">
+			<cfset result =  "#result#, '#arguments.delimeter#', CAST(#colname# AS CHAR)">
 		<cfelse>
-			<cfset result = "#colname#">
+			<cfset result = "CAST(#colname# AS CHAR)">
 		</cfif>
 	</cfloop>
 	<cfset result = "CONCAT(#result#)">
@@ -88,18 +88,18 @@
 		<cfset arguments.tablealias = arguments.tablename>
 	</cfif>
 	
-	<cfloop index="colname" list="#arguments.fields#">
-		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=colname,tablealias=arguments.tablealias,useFieldAlias=false)>
+	<cfloop index="col" list="#arguments.fields#">
+		<cfset fieldSQL = getFieldSelectSQL(tablename=arguments.tablename,field=col,tablealias=arguments.tablealias,useFieldAlias=false)>
 		<cfif ArrayLen(aSQL)>
 			<cfset ArrayAppend(aSQL,", '#arguments.delimeter#', ")>
 		</cfif>
+		<cfset ArrayAppend(aSQL,"CAST(")>
 		<cfif isSimpleValue(fieldSQL)>
 			<cfset ArrayAppend(aSQL,"#fieldSQL#")>
 		<cfelse>
-			<!--- <cfset ArrayAppend(aSQL,"CAST(")> --->
 			<cfset ArrayAppend(aSQL,fieldSQL)>
-			<!--- <cfset ArrayAppend(aSQL," AS varchar)")> --->
 		</cfif>
+		<cfset ArrayAppend(aSQL," AS CHAR)")>
 	</cfloop>
 	<cfset ArrayAppend(aSQL2,"CONCAT(")>
 	<cfset ArrayAppend(aSQL2,aSQL)>
@@ -172,18 +172,13 @@
 		</cfif>
 		<cfif NULL eq "Yes">
 			<cfset tmpStruct["AllowNulls"] = true>
-		<cfelse>
-			<cfset tmpStruct["AllowNulls"] = false>
 		</cfif>
 		<cfif Len(Default)>
 			<cfset tmpStruct["Default"] = Default>
 		</cfif>
-		<cfset tmpStruct["Precision"] = "">
-		<cfset tmpStruct["Scale"] = "">
-		<cfset tmpStruct["Special"] = "">
 		
 		<cfif Len(tmpStruct.CF_DataType)>
-			<cfset ArrayAppend(TableData,StructCopy(tmpStruct))>
+			<cfset ArrayAppend(TableData,adjustColumnArgs(tmpStruct))>
 		</cfif>
 	</cfoutput>
 	
@@ -202,6 +197,7 @@
 		<cfcase value="bigint"><cfset result = "CF_SQL_BIGINT"></cfcase>
 		<cfcase value="binary,image,sql_variant,sysname,varbinary"><cfset result = ""></cfcase>
 		<cfcase value="bit"><cfset result = "CF_SQL_BIT"></cfcase>
+		<cfcase value="blob"><cfset result = "CF_SQL_BLOB"></cfcase>
 		<cfcase value="char"><cfset result = "CF_SQL_CHAR"></cfcase>
 		<cfcase value="date,datetime"><cfset result = "CF_SQL_DATE"></cfcase>
 		<cfcase value="decimal"><cfset result = "CF_SQL_DECIMAL"></cfcase>
@@ -209,6 +205,7 @@
 		<cfcase value="float"><cfset result = "CF_SQL_FLOAT"></cfcase>
 		<cfcase value="int"><cfset result = "CF_SQL_INTEGER"></cfcase>
 		<cfcase value="mediumint"><cfset result = "CF_SQL_INTEGER"></cfcase>
+		<cfcase value="mediumtext"><cfset result = "CF_SQL_LONGVARCHAR"></cfcase>
 		<cfcase value="money"><cfset result = "CF_SQL_MONEY"></cfcase>
 		<cfcase value="nchar"><cfset result = "CF_SQL_CHAR"></cfcase>
 		<cfcase value="ntext"><cfset result = "CF_SQL_LONGVARCHAR"></cfcase>
@@ -238,12 +235,13 @@
 	<cfswitch expression="#arguments.CF_Datatype#">
 		<cfcase value="CF_SQL_BIGINT"><cfset result = "bigint"></cfcase>
 		<cfcase value="CF_SQL_BIT"><cfset result = "tinyint"></cfcase>
+		<cfcase value="CF_SQL_BLOB"><cfset result = "blob"></cfcase>
 		<cfcase value="CF_SQL_CHAR"><cfset result = "char"></cfcase>
 		<cfcase value="CF_SQL_DATE"><cfset result = "datetime"></cfcase>
 		<cfcase value="CF_SQL_DECIMAL"><cfset result = "decimal"></cfcase>
 		<cfcase value="CF_SQL_DOUBLE"><cfset result = "double"></cfcase>
 		<cfcase value="CF_SQL_FLOAT"><cfset result = "float"></cfcase>
-		<cfcase value="CF_SQL_IDSTAMP"><cfset result = "uniqueidentifier"></cfcase>
+		<cfcase value="CF_SQL_IDSTAMP"><cfset result = "varchar"></cfcase>
 		<cfcase value="CF_SQL_INTEGER"><cfset result = "int"></cfcase>
 		<cfcase value="CF_SQL_LONGVARCHAR"><cfset result = "text"></cfcase>
 		<cfcase value="CF_SQL_MONEY"><cfset result = "money"></cfcase>
@@ -262,14 +260,22 @@
 
 <cffunction name="getMaxRowsPrefix" access="public" returntype="string" output="no" hint="I get the SQL before the field list in the select statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
+	<cfargument name="offset" type="numeric" default="0">
 	
 	<cfreturn "">
 </cffunction>
 
 <cffunction name="getMaxRowsSuffix" access="public" returntype="string" output="no" hint="I get the SQL before the field list in the select statement to limit the number of rows.">
 	<cfargument name="maxrows" type="numeric" required="yes">
+	<cfargument name="offset" type="numeric" default="0">
 	
-	<cfreturn " LIMIT #arguments.maxrows#">
+	<cfset var result = " LIMIT #arguments.maxrows#">
+	
+	<cfif arguments.offset>
+		<cfset result = "#result# OFFSET #arguments.offset#">
+	</cfif>
+	
+	<cfreturn result>
 </cffunction>
 
 <cffunction name="getFieldSQL_Has" access="private" returntype="any" output="no">
@@ -326,6 +332,10 @@
 		<cfset loadTable(arguments.tablename)>
 	</cfif>
 	
+	<cfreturn true>
+</cffunction>
+
+<cffunction name="dbHasOffset" access="private" returntype="boolean" output="no">
 	<cfreturn true>
 </cffunction>
 
@@ -409,6 +419,19 @@
 	
 	<cfif ListFindNoCase(strtypes,arguments.type)>
 		<cfset result = true>
+	</cfif>
+	
+	<cfreturn result>
+</cffunction>
+
+<cffunction name="makeDefaultValue" access="private" returntype="string" output="no" hint="I return the value of the default for the given datatype and raw value.">
+	<cfargument name="value" type="string" required="yes">
+	<cfargument name="CF_DataType" type="string" required="yes">
+	
+	<cfset var result = super.makeDefaultValue(value=arguments.value,CF_DataType=arguments.CF_DataType)>
+	
+	<cfif isDate(result)>
+		<cfset result = "'#result#'">
 	</cfif>
 	
 	<cfreturn result>
