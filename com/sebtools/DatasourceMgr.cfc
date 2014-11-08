@@ -67,7 +67,7 @@
 	<cfset var dsService = CreateObject("java", "coldfusion.server.ServiceFactory").DataSourceService>
 	<cfset var qDataMgrDatabases = variables.DataMgr.getSupportedDatabases()>
 	<cfset var sDatasources = dsService.getDatasources()>
-	<cfset var qDatasources = QueryNew("name,uname")>
+	<cfset var qDatasources = QueryNew("name,uname,type")>
 	<cfset var name = "">
 	
 	<cfloop collection="#sDatasources#" item="name">
@@ -76,13 +76,14 @@
 				<cfset QueryAddRow(qDatasources)>
 				<cfset QuerySetCell(qDatasources,"name",name)>
 				<cfset QuerySetCell(qDatasources,"uname",UCase(name))>
+				<cfset QuerySetCell(qDatasources,"type",Database)>
 				<cfbreak>
 			</cfif>
 		</cfloop>
 	</cfloop>
 	
 	<cfquery name="qDatasources" dbtype="query">
-	SELECT		name
+	SELECT		name,type
 	FROM		qDatasources
 	ORDER BY	uname	
 	</cfquery>
