@@ -25,8 +25,8 @@
 	
 	<cfdirectory action="LIST" directory="#TypesPath#" name="qRuleTypes" filter="*.cfc">
 	<cfloop query="qRuleTypes">
-		<cfif name neq "base.cfc">
-			<cfset variables.RuleTypes[ListFirst(name,".")] = CreateObject("component","types.#ListFirst(name,'.')#").init(variables.Files,variables.Rules,variables.Issues)>
+		<cfif qRuleTypes["name"][CurrentRow] neq "base.cfc">
+			<cfset variables.RuleTypes[ListFirst(name,".")] = CreateObject("component","types.#ListFirst(qRuleTypes["name"][CurrentRow],'.')#").init(variables.Files,variables.Rules,variables.Issues)>
 		</cfif>
 	</cfloop>
 	
