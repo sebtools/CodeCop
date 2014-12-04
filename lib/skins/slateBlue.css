@@ -1,0 +1,66 @@
+@import url(../calendar/calendar-system.css);
+body {behavior:url(hover.htc)}
+#sebMenu h1 {font-family:Verdana,Arial,Helvetica;font-size:20px;}
+#sebMenu a {color:#3AB4BB;font-family:Verdana,Arial,Helvetica;font-size:small;font-weight:bold;text-decoration:none;}
+#sebMenu #sebTab a:hover, #sebMenu #sebTab a.CurrTab {color:#9AF4FD;text-decoration:none;}
+#sebMenu li {list-style-type:circle;}
+#sebTab {background-color:#000000;border-top:1px solid #E1E5E9;border-bottom:1px solid #9EAAB4;color:white;font-weight:bold;}
+#sebTab a {background-color:#000000;color:#5AD4DB;display:block;height:16px;padding:4px 20px;}
+#sebTab a.CurrTab {font-weight:bold;}
+
+.sebTableCount {float:right;font-size:10px;}
+.sebTable table {clear:right;}
+.sebTable td, .sebTable th {padding-right:16px;}
+.sebTable tr.odd td {background-color:#DAFCFF;}
+.sebTable {width:99%;}
+.sebTable table {background-color:white;border:1px solid #827167;width:100%;}
+.sebTable th {height:20px;padding:4px;text-align:left;}
+#sebTable th a, .sebTable th a, .sebTable-pager-prev a, .sebTable-pager-next a, .sebTable table input.submit, .sebTable table input.delete {
+	background-color:#000000;
+	border-top:2px solid #9E9E9E;
+	border-right:2px solid #101010;
+	border-bottom:2px solid #101010;
+	border-left:2px solid #9E9E9E;
+	color:white;
+	cursor:pointer;
+	display:block;
+	font-weight:bold;
+	padding:1px;
+	text-decoration:none;
+}
+#sebTable th a:hover, .sebTable th a:hover, .sebTable-pager-prev a:hover, .sebTable-pager-next a:hover {
+	color:#5AD4DB;
+	text-decoration:none;
+}
+.sebTable table input.delete {
+	padding:0;
+}
+
+.sebTable-pager-prev a, .sebTable-pager-next a {font-weight:bold;text-align:center;}
+
+.sebTable th a {
+	background-image:url(/lib/asc.gif);
+	background-position:right;
+	background-repeat:no-repeat;
+	padding-right:20px;
+}
+.sebTable th a.asc {background-image:url(../asc-teal.gif);}
+.sebTable th a.desc {background-image:url(../desc-teal.gif);}
+
+.sebTable th a:hover {color:#66FF66;}
+.sebTable th a:active {border-style:inset;}
+
+#sebForm, #sebTab {font:75%/150% Verdana, Geneva, Arial, Helvetica, sans-serif;}
+#sebForm fieldset.checkbox, #sebForm fieldset.radio, #sebForm fieldset.yesno {border:0;padding:0;margin:0;}
+#sebForm table {background-color:#EEEEEE;border:1px solid #CCCCCC;margin-bottom:20px;}
+#sebForm td {background-color:#EEEEEE;border-color:white #DDDDDD #DDDDDD white;border-style:solid;border-width:1px;font-size:80%;padding:5px;text-align:left;}
+#sebForm td.label {background-color:#E7E7E7;border-style:solid;border-color:white #D6D6D6 #D6D6D6 white;border-width:1px;color:#2AA4AB;font-size:80%;font-weight:bold;padding:5px;}
+.sebform-error {
+	border:1px solid red;
+	margin:4px;
+	padding:8px;
+	width:500px;
+}
+.sebform-error ul {
+	margin:0 0 0 0;
+}
